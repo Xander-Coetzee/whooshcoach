@@ -48,26 +48,38 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-lg text-white tracking-tight">WhooshCoach</h1>
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">AI Endurance Hub</span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">Multi-Athlete AI</span>
           </div>
-          <p class="text-xs text-slate-400">MyWhoosh Workouts + Race Target Calendar + Gemini AI</p>
+          <p class="text-xs text-slate-400">MyWhoosh + Zwift + Race Periodization + Gemini AI</p>
         </div>
       </div>
 
       <!-- Action Buttons & Status -->
-      <div class="flex items-center gap-2.5">
-        <!-- MyWhoosh Status Badge -->
-        <div id="mywhooshStatusBadge" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300">
-          <span id="mywhooshStatusDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span id="mywhooshStatusText">MyWhoosh: Ready</span>
+      <div class="flex items-center flex-wrap gap-2.5">
+        <!-- Athlete Profile Switcher -->
+        <div class="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs shadow-inner">
+          <i data-lucide="user" class="w-3.5 h-3.5 text-sky-400"></i>
+          <select id="athleteSelector" onchange="switchAthlete(this.value)" class="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer pr-1">
+            <option value="1">Xander (MyWhoosh)</option>
+            <option value="2">Mom (Zwift)</option>
+          </select>
+          <button onclick="openNewAthleteModal()" class="text-slate-400 hover:text-white p-0.5 ml-1 transition" title="Add New Athlete">
+            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+          </button>
         </div>
 
-        <!-- Sync MyWhoosh Button -->
-        <button id="btnSyncMyWhoosh" onclick="triggerMyWhooshSync()" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition shadow-sm hover:shadow-emerald-500/20">
-          <span id="syncMyWhooshIconWrap" class="flex items-center justify-center">
-            <i id="syncMyWhooshIcon" data-lucide="refresh-cw" class="w-4 h-4"></i>
+        <!-- Platform Status Badge -->
+        <div id="platformStatusBadge" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300">
+          <span id="platformStatusDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="platformStatusText">MyWhoosh: Ready</span>
+        </div>
+
+        <!-- Sync Button (Dynamic: MyWhoosh or Zwift) -->
+        <button id="btnSyncPlatform" onclick="triggerPlatformSync()" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition shadow-sm hover:shadow-emerald-500/20">
+          <span id="syncPlatformIconWrap" class="flex items-center justify-center">
+            <i id="syncPlatformIcon" data-lucide="refresh-cw" class="w-4 h-4"></i>
           </span>
-          <span id="syncMyWhooshText">Sync MyWhoosh</span>
+          <span id="syncPlatformText">Sync MyWhoosh</span>
         </button>
 
         <!-- Add Race / Target Event Button -->
@@ -348,7 +360,11 @@
           <button id="btnMarkSkipped" onclick="markEventStatus('skipped')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition border border-slate-700">Skip</button>
           <button id="btnDeleteEvent" onclick="deleteCurrentEvent()" class="px-3 py-1.5 text-red-400 hover:bg-red-500/10 rounded-lg text-xs font-medium transition">Delete</button>
         </div>
-        <div>
+        <div class="flex items-center gap-2">
+          <button id="btnExportZwo" onclick="downloadCurrentWorkoutZwo()" class="px-3.5 py-1.5 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-semibold transition inline-flex items-center gap-1.5 shadow-sm" title="Download Zwift Workout File (.zwo)">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Download .ZWO</span>
+          </button>
           <a id="modalMyWhooshLink" href="#" target="_blank" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold transition inline-flex items-center gap-1.5">
             <span>Open in MyWhoosh</span>
             <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
@@ -556,6 +572,32 @@
 
       <div class="p-5 overflow-y-auto space-y-5 text-xs">
         
+        <!-- Active Athlete & Platform Selector -->
+        <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i data-lucide="user" class="w-4 h-4 text-sky-400"></i>
+              <label class="block font-bold text-slate-200">Active Athlete Profile</label>
+            </div>
+            <span id="settingsAthleteIdBadge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20">Profile #1</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <span class="text-[11px] text-slate-400">Athlete Display Name</span>
+              <input id="settingAthleteName" type="text" placeholder="e.g. Xander, Mom" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-sky-500">
+            </div>
+            <div>
+              <span class="text-[11px] text-slate-400">Primary Cycling Platform</span>
+              <select id="settingPlatform" onchange="togglePlatformCardsUI()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-sky-500">
+                <option value="mywhoosh">MyWhoosh (Free Cloud Sync)</option>
+                <option value="zwift">Zwift (Cloud Sync & .ZWO Export)</option>
+                <option value="both">Both Platforms</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <!-- Gemini AI Engine Settings -->
         <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
           <div class="flex items-center justify-between">
@@ -593,8 +635,8 @@
           </div>
         </div>
 
-        <!-- MyWhoosh Cloud Connection -->
-        <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+        <!-- MyWhoosh Cloud Connection Card -->
+        <div id="mywhooshSettingsCard" class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <i data-lucide="cloud" class="w-4 h-4 text-emerald-400"></i>
@@ -621,6 +663,37 @@
               <span>Test Connection & Authenticate</span>
             </button>
             <span id="lastMyWhooshSyncLabel" class="text-[11px] text-slate-500">Never synced</span>
+          </div>
+        </div>
+
+        <!-- Zwift Cloud Connection Card -->
+        <div id="zwiftSettingsCard" class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i data-lucide="cloud" class="w-4 h-4 text-orange-400"></i>
+              <label class="font-bold text-slate-200">Zwift Cloud Connection (Direct OAuth)</label>
+            </div>
+            <span id="settingsZwiftBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Not Linked</span>
+          </div>
+          <p class="text-[11px] text-slate-400">Connects directly to your Zwift account via companion service. Automatically fetches completed activities and calculates ride TSS for dynamic coaching.</p>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <span class="text-[11px] text-slate-400">Zwift Username / Email</span>
+              <input id="settingZwiftUsername" type="text" placeholder="zwifter@example.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-orange-500">
+            </div>
+            <div>
+              <span class="text-[11px] text-slate-400">Zwift Password</span>
+              <input id="settingZwiftPassword" type="password" placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-orange-500">
+            </div>
+          </div>
+
+          <div class="pt-2 flex items-center justify-between gap-3">
+            <button type="button" onclick="testZwiftConnection()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg transition flex items-center gap-1.5">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+              <span>Test Connection & Authenticate</span>
+            </button>
+            <span id="lastZwiftSyncLabel" class="text-[11px] text-slate-500">Never synced</span>
           </div>
         </div>
 
@@ -849,6 +922,63 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD NEW ATHLETE -->
+  <div id="newAthleteModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="user-plus" class="w-5 h-5 text-sky-400"></i>
+          <h3 class="font-bold text-base text-white">Add New Athlete Profile</h3>
+        </div>
+        <button onclick="closeNewAthleteModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Athlete Name</label>
+          <input id="newAthleteName" type="text" placeholder="e.g. Mom, Dave, Sarah" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Primary Cycling Platform</label>
+          <select id="newAthletePlatform" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
+            <option value="zwift" selected>Zwift (Companion API & .ZWO Export)</option>
+            <option value="mywhoosh">MyWhoosh (Free Cloud Sync)</option>
+            <option value="both">Both Platforms</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block font-medium text-slate-400 text-[11px] mb-1">FTP (Watts)</label>
+            <input id="newAthleteFtp" type="number" value="150" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-400 text-[11px] mb-1">Max HR</label>
+            <input id="newAthleteMaxHr" type="number" value="175" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-400 text-[11px] mb-1">Weight (kg)</label>
+            <input id="newAthleteWeight" type="number" step="0.5" value="65.0" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Primary Training Goal</label>
+          <input id="newAthleteGoal" type="text" value="Cardio Fitness & Group Rides" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white">
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end gap-2 text-xs">
+        <button onclick="closeNewAthleteModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition">Cancel</button>
+        <button onclick="createAthleteFromModal()" class="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="check" class="w-3.5 h-3.5"></i>
+          <span>Create Profile</span>
+        </button>
+      </div>
     </div>
   </div>
 

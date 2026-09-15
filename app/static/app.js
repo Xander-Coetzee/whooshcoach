@@ -2,9 +2,13 @@
 let calendar = null;
 let currentEventData = null;
 let libraryDebounceTimer = null;
+let currentAthleteId = parseInt(localStorage.getItem('whooshcoach_athlete_id') || '1', 10);
+let currentAthletePlatform = 'mywhoosh';
+let allAthletes = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   lucide.createIcons();
+  await loadAthletes();
   initCalendar();
   await loadSettings();
   await loadStats();
@@ -24,7 +28,7 @@ function initCalendar() {
     },
     height: 'auto',
     aspectRatio: 1.5,
-    events: '/api/calendar',
+    events: `/api/calendar?athlete_id=${currentAthleteId}`,
     eventClick: function(info) {
       openEventDetails(info.event);
     },
@@ -40,7 +44,7 @@ function initCalendar() {
 
 async function loadStats() {
   try {
-    const res = await fetch('/api/stats');
+    const res = await fetch(`/api/stats?athlete_id=${currentAthleteId}`);
     if (!res.ok) return;
     const stats = await res.json();
 
@@ -125,21 +129,30 @@ async function openEventDetails(eventObj) {
     document.getElementById('modalCoachNotesBox').classList.add('hidden');
   }
 
+  const zwoBtn = document.getElementById('btnExportZwo');
+  const mwLink = document.getElementById('modalMyWhooshLink');
+
   if (props.event_type === 'race') {
     const prio = props.race_priority || 'A';
     document.getElementById('modalZoneTag').innerText = `🏆 ${prio}-Race`;
     document.getElementById('modalDescription').innerText = props.athlete_notes || "Scheduled target race.";
     document.getElementById('modalSteps').innerText = `Discipline: ${props.race_type || 'Road Race'}\nTarget Distance: ${props.target_distance_km ? props.target_distance_km + ' km' : 'Not specified'}\nPlanned Duration: ${props.planned_duration_minutes || 0} mins\nTarget TSS: ${props.planned_tss || 0}\nStrategy Notes: ${props.athlete_notes || 'None'}`;
-    document.getElementById('modalMyWhooshLink').classList.add('hidden');
+    if (mwLink) mwLink.classList.add('hidden');
+    if (zwoBtn) zwoBtn.classList.remove('hidden');
+  } else if (props.event_type === 'rest' || props.status === 'rest') {
+    document.getElementById('modalDescription').innerText = props.athlete_notes || "Rest / recovery day.";
+    document.getElementById('modalSteps').innerText = "Rest day - no interval steps.";
+    if (mwLink) mwLink.classList.add('hidden');
+    if (zwoBtn) zwoBtn.classList.add('hidden');
   } else if (props.workout_id) {
+    if (zwoBtn) zwoBtn.classList.remove('hidden');
     try {
       const res = await fetch(`/api/workouts/${props.workout_id}`);
       if (res.ok) {
         const w = await res.json();
         document.getElementById('modalDescription').innerText = w.description || "No description provided.";
         document.getElementById('modalSteps').innerText = w.workout_steps || "Open ride / Free ride.";
-        if (w.url) {
-          const mwLink = document.getElementById('modalMyWhooshLink');
+        if (w.url && mwLink) {
           mwLink.href = w.url;
           mwLink.classList.remove('hidden');
         }
@@ -148,15 +161,25 @@ async function openEventDetails(eventObj) {
       console.error(e);
     }
   } else {
-    document.getElementById('modalDescription').innerText = props.athlete_notes || "Rest / recovery day.";
-    document.getElementById('modalSteps').innerText = "Rest day - no interval steps.";
-    document.getElementById('modalMyWhooshLink').classList.add('hidden');
+    document.getElementById('modalDescription').innerText = props.athlete_notes || "Scheduled structured workout.";
+    document.getElementById('modalSteps').innerText = "Open ride / AI periodized workout.";
+    if (mwLink) mwLink.classList.add('hidden');
+    if (zwoBtn) zwoBtn.classList.remove('hidden');
   }
 
   const modal = document.getElementById('workoutModal');
   modal.classList.remove('hidden');
   modal.classList.add('flex');
   lucide.createIcons();
+}
+
+function downloadCurrentWorkoutZwo() {
+  if (!currentEventData || !currentEventData.id) {
+    showToast("No workout selected to export", "error");
+    return;
+  }
+  showToast("Downloading Zwift workout (.zwo)...", "info");
+  window.open(`/api/workouts/${currentEventData.id}/export-zwo`, '_blank');
 }
 
 function viewTodayDetails() {
@@ -289,6 +312,7 @@ async function submitAddEvent(e) {
   }
 
   const payload = {
+    athlete_id: currentAthleteId,
     date: date,
     title: title,
     event_type: type,
@@ -466,6 +490,7 @@ async function generatePlan() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        athlete_id: currentAthleteId,
         start_date: startDate,
         days: days,
         user_instructions: instructions,
@@ -586,7 +611,7 @@ async function handleCoachChat(e) {
     const res = await fetch('/api/coach/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: message })
+      body: JSON.stringify({ athlete_id: currentAthleteId, message: message })
     });
     const data = await res.json();
     loadingBubble.remove();
@@ -789,9 +814,17 @@ function toggleCoachingModeUI() {
 
 async function loadSettings() {
   try {
-    const res = await fetch('/api/settings');
+    const res = await fetch(`/api/settings?athlete_id=${currentAthleteId}`);
     if (!res.ok) return;
     const s = await res.json();
+
+    if (document.getElementById('settingAthleteName')) {
+      document.getElementById('settingAthleteName').value = s.name || '';
+    }
+    if (document.getElementById('settingPlatform')) {
+      document.getElementById('settingPlatform').value = s.platform || 'mywhoosh';
+    }
+    togglePlatformCardsUI();
 
     document.getElementById('settingFtp').value = s.ftp || 220;
     document.getElementById('settingMaxHr').value = s.max_hr || 185;
@@ -827,34 +860,52 @@ async function loadSettings() {
       document.getElementById('settingMyWhooshPassword').placeholder = '•••••••• (Saved)';
     }
 
-    // MyWhoosh status badge in header & modal
-    const mwBadge = document.getElementById('mywhooshStatusBadge');
-    const mwDot = document.getElementById('mywhooshStatusDot');
-    const mwTxt = document.getElementById('mywhooshStatusText');
-    const mwModalBadge = document.getElementById('settingsMyWhooshBadge');
+    // Zwift settings
+    if (document.getElementById('settingZwiftUsername')) {
+      document.getElementById('settingZwiftUsername').value = s.zwift_username || '';
+    }
+    if (s.has_zwift_password && document.getElementById('settingZwiftPassword')) {
+      document.getElementById('settingZwiftPassword').placeholder = '•••••••• (Saved)';
+    }
 
+    // MyWhoosh status badge in modal
+    const mwModalBadge = document.getElementById('settingsMyWhooshBadge');
     if (s.is_mywhoosh_connected) {
-      if (mwBadge) mwBadge.classList.remove('hidden');
-      if (mwDot) mwDot.className = "w-2 h-2 rounded-full bg-emerald-400";
-      if (mwTxt) mwTxt.innerText = "MyWhoosh: Connected";
       if (mwModalBadge) {
         mwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
         mwModalBadge.innerText = "Connected";
       }
     } else {
-      if (mwDot) mwDot.className = "w-2 h-2 rounded-full bg-amber-400";
-      if (mwTxt) mwTxt.innerText = "MyWhoosh: Setup Needed";
       if (mwModalBadge) {
         mwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
         mwModalBadge.innerText = "Not Linked";
       }
     }
 
+    // Zwift status badge in modal
+    const zwModalBadge = document.getElementById('settingsZwiftBadge');
+    if (s.is_zwift_connected) {
+      if (zwModalBadge) {
+        zwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        zwModalBadge.innerText = "Connected";
+      }
+    } else {
+      if (zwModalBadge) {
+        zwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+        zwModalBadge.innerText = "Not Linked";
+      }
+    }
+
     if (s.last_mywhoosh_sync && document.getElementById('lastMyWhooshSyncLabel')) {
       document.getElementById('lastMyWhooshSyncLabel').innerText = `Last sync: ${s.last_mywhoosh_sync}`;
     }
+    if (s.last_zwift_sync && document.getElementById('lastZwiftSyncLabel')) {
+      document.getElementById('lastZwiftSyncLabel').innerText = `Last sync: ${s.last_zwift_sync}`;
+    }
+
+    updateAthleteUIState();
   } catch (e) {
-    console.error(e);
+    console.error("Failed to load settings:", e);
   }
 }
 
@@ -875,6 +926,14 @@ async function saveSettings(silent = false) {
     primary_goal: document.getElementById('settingPrimaryGoal').value
   };
 
+  if (document.getElementById('settingAthleteName')) {
+    const nameVal = document.getElementById('settingAthleteName').value.trim();
+    if (nameVal) payload.name = nameVal;
+  }
+  if (document.getElementById('settingPlatform')) {
+    payload.platform = document.getElementById('settingPlatform').value;
+  }
+
   const geminiKey = document.getElementById('settingGeminiKey').value.trim();
   if (geminiKey) payload.gemini_api_key = geminiKey;
 
@@ -890,8 +949,16 @@ async function saveSettings(silent = false) {
     if (mwPass) payload.mywhoosh_password = mwPass;
   }
 
+  if (document.getElementById('settingZwiftUsername')) {
+    payload.zwift_username = document.getElementById('settingZwiftUsername').value.trim();
+  }
+  if (document.getElementById('settingZwiftPassword')) {
+    const zwPass = document.getElementById('settingZwiftPassword').value.trim();
+    if (zwPass) payload.zwift_password = zwPass;
+  }
+
   try {
-    const res = await fetch('/api/settings', {
+    const res = await fetch(`/api/settings?athlete_id=${currentAthleteId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -901,7 +968,9 @@ async function saveSettings(silent = false) {
         showToast('Settings saved successfully!', 'success');
         closeSettingsModal();
       }
-      loadSettings();
+      await loadAthletes();
+      await loadSettings();
+      await loadStats();
       return true;
     } else {
       if (!silent) showToast('Failed to save settings.', 'error');
@@ -914,23 +983,26 @@ async function saveSettings(silent = false) {
 }
 
 async function testGeminiConnection() {
-  await saveSettings(true);
-  showToast('Testing Gemini API key & model...', 'info');
   const statusEl = document.getElementById('geminiTestStatus');
+  const apiKey = document.getElementById('settingGeminiKey').value.trim();
+  const preferredModel = document.getElementById('settingGeminiModel').value;
+
   if (statusEl) {
-    statusEl.innerText = "Testing connection to Google Gemini...";
+    statusEl.innerText = `Testing connection to ${preferredModel}...`;
     statusEl.className = "text-[11px] text-sky-400 font-medium";
   }
 
   try {
-    const res = await fetch('/api/coach/test', {
+    const res = await fetch(`/api/coach/test?athlete_id=${currentAthleteId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        gemini_api_key: document.getElementById('settingGeminiKey').value.trim(),
-        gemini_model: document.getElementById('settingGeminiModel').value
+        athlete_id: currentAthleteId,
+        gemini_api_key: apiKey || null,
+        gemini_model: preferredModel || null
       })
     });
+
     let data = null;
     try { data = await res.json(); } catch (_) {}
 
@@ -963,7 +1035,7 @@ async function testMyWhooshConnection() {
   showToast('Connecting to MyWhoosh cloud...', 'info');
 
   try {
-    const res = await fetch('/api/mywhoosh/test', { method: 'POST' });
+    const res = await fetch(`/api/mywhoosh/test?athlete_id=${currentAthleteId}`, { method: 'POST' });
     let data = null;
     try {
       data = await res.json();
@@ -971,7 +1043,8 @@ async function testMyWhooshConnection() {
 
     if (res.ok && data && data.success) {
       showToast('MyWhoosh connected successfully!', 'success');
-      loadSettings();
+      await loadSettings();
+      await loadAthletes();
     } else {
       const errMsg = (data && (data.detail || data.message || data.error)) || `Server returned status ${res.status}`;
       showToast(`MyWhoosh login: ${errMsg}`, 'error');
@@ -982,22 +1055,49 @@ async function testMyWhooshConnection() {
   }
 }
 
-async function triggerMyWhooshSync() {
-  const btn = document.getElementById('btnSyncMyWhoosh');
-  const iconWrap = document.getElementById('syncMyWhooshIconWrap');
-  const txt = document.getElementById('syncMyWhooshText');
+async function testZwiftConnection() {
+  await saveSettings(true);
+  showToast('Connecting to Zwift cloud...', 'info');
+
+  try {
+    const res = await fetch(`/api/zwift/test?athlete_id=${currentAthleteId}`, { method: 'POST' });
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (_) {}
+
+    if (res.ok && data && data.success) {
+      showToast('Zwift connected successfully!', 'success');
+      await loadSettings();
+      await loadAthletes();
+    } else {
+      const errMsg = (data && (data.detail || data.message || data.error)) || `Server returned status ${res.status}`;
+      showToast(`Zwift login: ${errMsg}`, 'error');
+    }
+  } catch (e) {
+    console.error("Test Zwift connection error:", e);
+    showToast(`Network error testing Zwift: ${e.message}`, 'error');
+  }
+}
+
+async function triggerPlatformSync() {
+  const btn = document.getElementById('btnSyncPlatform') || document.getElementById('btnSyncMyWhoosh');
+  const iconWrap = document.getElementById('syncPlatformIconWrap') || document.getElementById('syncMyWhooshIconWrap');
+  const txt = document.getElementById('syncPlatformText') || document.getElementById('syncMyWhooshText');
+  const origText = txt ? txt.innerText : 'Sync';
 
   if (btn) btn.disabled = true;
   if (iconWrap) iconWrap.classList.add('animate-spin');
   if (txt) txt.innerText = 'Syncing...';
 
-  showToast('Syncing activities from MyWhoosh...', 'info');
+  const platName = currentAthletePlatform === 'zwift' ? 'Zwift' : (currentAthletePlatform === 'both' ? 'Cloud' : 'MyWhoosh');
+  showToast(`Syncing activities from ${platName}...`, 'info');
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s safety timeout
+  const timeoutId = setTimeout(() => controller.abort(), 35000);
 
   try {
-    const res = await fetch('/api/mywhoosh/sync', { 
+    const res = await fetch(`/api/sync?athlete_id=${currentAthleteId}`, { 
       method: 'POST',
       signal: controller.signal
     });
@@ -1010,46 +1110,232 @@ async function triggerMyWhooshSync() {
 
     if (res.ok && data && data.status === 'success') {
       calendar.refetchEvents();
-      loadStats();
+      await loadStats();
 
       const newRides = data.new_activities || 0;
       const cleanedWorkouts = data.cleaned_past_workouts || 0;
 
       let msg = '';
       if (newRides > 0 && cleanedWorkouts > 0) {
-        msg = `MyWhoosh synced: ${newRides} new ride(s) logged & ${cleanedWorkouts} expired past workout(s) removed!`;
+        msg = `${platName} synced: ${newRides} new ride(s) logged & ${cleanedWorkouts} expired past workout(s) removed!`;
       } else if (newRides > 0) {
-        msg = `MyWhoosh synced: ${newRides} new ride(s) logged!`;
+        msg = `${platName} synced: ${newRides} new ride(s) logged!`;
       } else if (cleanedWorkouts > 0) {
-        msg = `MyWhoosh synced: All caught up! Removed ${cleanedWorkouts} expired past workout(s).`;
+        msg = `${platName} synced: All caught up! Removed ${cleanedWorkouts} expired past workout(s).`;
       } else {
-        msg = `MyWhoosh synced: Activities already up to date.`;
+        msg = `${platName} synced: Activities already up to date.`;
       }
 
       showToast(msg, 'success');
 
       if (data.adaptation) {
-        appendCoachMessage(`**MyWhoosh Ride Logged!**\n\n${data.adaptation}`);
+        appendCoachMessage(`**${platName} Ride Logged!**\n\n${data.adaptation}`);
       }
-      loadSettings();
+      await loadSettings();
     } else {
       const errMsg = (data && (data.message || data.detail || data.error)) || `Server returned status ${res.status}`;
-      showToast(`MyWhoosh sync: ${errMsg}`, 'error');
+      showToast(`${platName} sync: ${errMsg}`, 'error');
     }
   } catch (e) {
     clearTimeout(timeoutId);
-    console.error("MyWhoosh sync error:", e);
+    console.error("Sync error:", e);
     if (e.name === 'AbortError') {
-      showToast('Sync request timed out after 30s. The server may still be processing in the background.', 'error');
+      showToast('Sync request timed out after 35s. The server may still be processing in the background.', 'error');
     } else {
       showToast(`Connection error during sync: ${e.message}`, 'error');
     }
   } finally {
     if (btn) btn.disabled = false;
     if (iconWrap) iconWrap.classList.remove('animate-spin');
-    if (txt) txt.innerText = 'Sync MyWhoosh';
-    // Clear any residual spinning classes on children
-    document.querySelectorAll('#btnSyncMyWhoosh .animate-spin').forEach(el => el.classList.remove('animate-spin'));
+    if (txt) txt.innerText = origText;
+  }
+}
+
+// Backwards compatibility alias
+const triggerMyWhooshSync = triggerPlatformSync;
+
+// ----------------- ATHLETE PROFILE & PLATFORM HELPERS -----------------
+
+async function loadAthletes() {
+  try {
+    const res = await fetch('/api/athletes');
+    if (!res.ok) return;
+    allAthletes = await res.json();
+    populateAthleteDropdown();
+  } catch (e) {
+    console.error("Failed to load athletes:", e);
+  }
+}
+
+function getCurrentAthlete() {
+  return allAthletes.find(a => a.id === currentAthleteId) || (allAthletes.length > 0 ? allAthletes[0] : null);
+}
+
+function populateAthleteDropdown() {
+  const sel = document.getElementById('athleteSelector');
+  if (!sel) return;
+  sel.innerHTML = '';
+  allAthletes.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.id;
+    const platName = a.platform === 'zwift' ? 'Zwift' : (a.platform === 'both' ? 'Both' : 'MyWhoosh');
+    opt.textContent = `${a.name} (${platName})`;
+    if (a.id === currentAthleteId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  updateAthleteUIState();
+}
+
+async function switchAthlete(id) {
+  currentAthleteId = parseInt(id, 10);
+  localStorage.setItem('whooshcoach_athlete_id', currentAthleteId);
+  updateAthleteUIState();
+  if (calendar) {
+    calendar.setOption('events', `/api/calendar?athlete_id=${currentAthleteId}`);
+    calendar.refetchEvents();
+  }
+  await loadStats();
+  await loadSettings();
+  const a = getCurrentAthlete();
+  showToast(`Switched active profile to ${a ? a.name : 'Athlete'}`, 'info');
+}
+
+function updateAthleteUIState() {
+  const a = getCurrentAthlete();
+  if (!a) return;
+  currentAthletePlatform = a.platform || 'mywhoosh';
+
+  // Header dynamic sync button
+  const syncTxt = document.getElementById('syncPlatformText');
+  const syncBtn = document.getElementById('btnSyncPlatform');
+  const platDot = document.getElementById('platformStatusDot');
+  const platTxt = document.getElementById('platformStatusText');
+  const platBadge = document.getElementById('platformStatusBadge');
+
+  if (currentAthletePlatform === 'zwift') {
+    if (syncTxt) syncTxt.innerText = "Sync Zwift";
+    if (syncBtn) {
+      syncBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white transition shadow-sm hover:shadow-orange-500/20";
+    }
+    if (platBadge) platBadge.classList.remove('hidden');
+    if (a.is_zwift_connected) {
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+      if (platTxt) platTxt.innerText = "Zwift: Ready";
+    } else {
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-amber-400";
+      if (platTxt) platTxt.innerText = "Zwift: Setup Needed";
+    }
+  } else if (currentAthletePlatform === 'both') {
+    if (syncTxt) syncTxt.innerText = "Sync Cloud (All)";
+    if (syncBtn) {
+      syncBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white transition shadow-sm hover:shadow-indigo-500/20";
+    }
+    if (platBadge) platBadge.classList.remove('hidden');
+    if (a.is_mywhoosh_connected || a.is_zwift_connected) {
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+      if (platTxt) platTxt.innerText = "Cloud: Ready";
+    } else {
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-amber-400";
+      if (platTxt) platTxt.innerText = "Cloud: Setup Needed";
+    }
+  } else {
+    if (syncTxt) syncTxt.innerText = "Sync MyWhoosh";
+    if (syncBtn) {
+      syncBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition shadow-sm hover:shadow-emerald-500/20";
+    }
+    if (platBadge) platBadge.classList.remove('hidden');
+    if (a.is_mywhoosh_connected) {
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+      if (platTxt) platTxt.innerText = "MyWhoosh: Ready";
+    } else {
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-amber-400";
+      if (platTxt) platTxt.innerText = "MyWhoosh: Setup Needed";
+    }
+  }
+
+  const badgeEl = document.getElementById('settingsAthleteIdBadge');
+  if (badgeEl) {
+    badgeEl.innerText = `${a.name} (ID: ${a.id})`;
+  }
+}
+
+function togglePlatformCardsUI() {
+  const plat = document.getElementById('settingPlatform') ? document.getElementById('settingPlatform').value : 'mywhoosh';
+  const mwCard = document.getElementById('mywhooshSettingsCard');
+  const zwCard = document.getElementById('zwiftSettingsCard');
+
+  if (mwCard) {
+    if (plat === 'mywhoosh' || plat === 'both') {
+      mwCard.classList.remove('hidden');
+    } else {
+      mwCard.classList.add('hidden');
+    }
+  }
+
+  if (zwCard) {
+    if (plat === 'zwift' || plat === 'both') {
+      zwCard.classList.remove('hidden');
+    } else {
+      zwCard.classList.add('hidden');
+    }
+  }
+}
+
+function openNewAthleteModal() {
+  const modal = document.getElementById('newAthleteModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    lucide.createIcons();
+  }
+}
+
+function closeNewAthleteModal() {
+  const modal = document.getElementById('newAthleteModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+async function createAthleteFromModal() {
+  const nameInput = document.getElementById('newAthleteName');
+  const name = nameInput ? nameInput.value.trim() : '';
+  if (!name) {
+    showToast("Please enter an athlete name", "error");
+    return;
+  }
+  const platform = document.getElementById('newAthletePlatform') ? document.getElementById('newAthletePlatform').value : 'zwift';
+  const ftp = parseInt(document.getElementById('newAthleteFtp').value, 10) || 150;
+  const max_hr = parseInt(document.getElementById('newAthleteMaxHr').value, 10) || 175;
+  const weight_kg = parseFloat(document.getElementById('newAthleteWeight').value) || 65.0;
+  const goal = document.getElementById('newAthleteGoal') ? document.getElementById('newAthleteGoal').value.trim() : 'Fitness';
+
+  try {
+    const res = await fetch('/api/athletes', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name,
+        platform,
+        ftp,
+        max_hr,
+        weight_kg,
+        primary_goal: goal,
+        coaching_mode: "autonomous"
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      closeNewAthleteModal();
+      await loadAthletes();
+      await switchAthlete(data.athlete.id);
+      showToast(`Created profile for ${name}!`, 'success');
+    } else {
+      showToast(data.detail || 'Failed to create athlete', 'error');
+    }
+  } catch (e) {
+    showToast(`Error creating athlete: ${e.message}`, 'error');
   }
 }
 

@@ -193,7 +193,10 @@ class MyWhooshService:
                     continue
 
                 # Check if activity already recorded
-                existing = db.query(RideActivity).filter(RideActivity.id == f"mw_{act_id}").first()
+                existing = db.query(RideActivity).filter(
+                    RideActivity.id == f"mw_{act_id}",
+                    RideActivity.athlete_id == profile.id
+                ).first()
                 if existing:
                     continue
 
@@ -222,8 +225,9 @@ class MyWhooshService:
 
                 calculated_tss = self.calculate_tss(duration_sec, avg_watts, avg_hr, profile)
 
-                # Match or create calendar event
+                # Match or create calendar event for this athlete
                 matched_event = db.query(CalendarEvent).filter(
+                    CalendarEvent.athlete_id == profile.id,
                     CalendarEvent.date == date_str,
                     CalendarEvent.status.in_(["planned", "scheduled"])
                 ).first()
@@ -237,10 +241,11 @@ class MyWhooshService:
                     matched_event.actual_avg_hr = avg_hr
                     matched_event.activity_id = f"mw_{act_id}"
                     matched_id = matched_event.id
-                    logger.info(f"[MyWhoosh] Matched activity '{title}' to planned calendar event on {date_str} (TSS: {calculated_tss})")
+                    logger.info(f"[MyWhoosh] Matched activity '{title}' to planned calendar event on {date_str} for athlete {profile.name} (TSS: {calculated_tss})")
                 else:
                     # Unplanned ride on calendar
                     new_cal_event = CalendarEvent(
+                        athlete_id=profile.id,
                         title=f"{title}",
                         date=date_str,
                         event_type="workout",
@@ -256,10 +261,11 @@ class MyWhooshService:
                     db.add(new_cal_event)
                     db.flush()
                     matched_id = new_cal_event.id
-                    logger.info(f"[MyWhoosh] Created new completed calendar event '{title}' on {date_str} (TSS: {calculated_tss})")
+                    logger.info(f"[MyWhoosh] Created new completed calendar event '{title}' on {date_str} for athlete {profile.name} (TSS: {calculated_tss})")
 
                 db_act = RideActivity(
                     id=f"mw_{act_id}",
+                    athlete_id=profile.id,
                     name=title,
                     type="VirtualRide",
                     start_date=start_datetime,
@@ -277,17 +283,21 @@ class MyWhooshService:
                 )
                 db.add(db_act)
                 new_count += 1
-            # Remove past uncompleted training workouts
+                if not latest_act:
+                    latest_act = db_act
+
+            # Remove past uncompleted training workouts for this athlete
             # (Strictly cleans past dates where status != 'completed', while preserving target races, custom rides, and rest days)
             today_str = datetime.date.today().strftime("%Y-%m-%d")
             cleaned_past = db.query(CalendarEvent).filter(
+                CalendarEvent.athlete_id == profile.id,
                 CalendarEvent.date < today_str,
                 CalendarEvent.status != "completed",
                 CalendarEvent.event_type.notin_(["race", "custom", "rest"])
             ).delete(synchronize_session=False)
 
             if cleaned_past > 0:
-                logger.info(f"[MyWhoosh] Cleaned up {cleaned_past} expired past uncompleted workout(s) before {today_str}.")
+                logger.info(f"[MyWhoosh] Cleaned up {cleaned_past} expired past uncompleted workout(s) before {today_str} for athlete {profile.name}.")
 
             profile.last_mywhoosh_sync = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
             db.commit()

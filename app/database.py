@@ -62,6 +62,9 @@ class CalendarEvent(Base):
     race_type = Column(String(100), nullable=True) # Road Race, Criterium, Gran Fondo, Time Trial, Gravel, MTB, Virtual Race, Other
     target_distance_km = Column(Float, nullable=True)
 
+    # Multi-User & Scoping
+    athlete_id = Column(Integer, ForeignKey("athlete_profile.id"), default=1, index=True)
+
     activity_id = Column(String(50), nullable=True)
     actual_duration_minutes = Column(Float, nullable=True)
     actual_tss = Column(Integer, nullable=True)
@@ -79,6 +82,7 @@ class RideActivity(Base):
     __tablename__ = "activities"
 
     id = Column(String(50), primary_key=True)
+    athlete_id = Column(Integer, ForeignKey("athlete_profile.id"), default=1, index=True)
     name = Column(String(255))
     type = Column(String(50), default="VirtualRide")
     start_date = Column(String(50))
@@ -102,7 +106,8 @@ class AthleteProfile(Base):
     __tablename__ = "athlete_profile"
 
     id = Column(Integer, primary_key=True, default=1)
-    name = Column(String(100), default="Cyclist")
+    name = Column(String(100), default="Xander")
+    platform = Column(String(50), default="mywhoosh") # mywhoosh, zwift, both
     ftp = Column(Integer, default=220)
     max_hr = Column(Integer, default=185)
     weight_kg = Column(Float, default=75.0)
@@ -115,17 +120,25 @@ class AthleteProfile(Base):
     gemini_api_key = Column(String(255), nullable=True)
     gemini_model = Column(String(50), default="gemini-3.6-flash")
 
-    # MyWhoosh credentials
+    # MyWhoosh credentials & sync state
     mywhoosh_email = Column(String(255), nullable=True)
     mywhoosh_password = Column(String(255), nullable=True)
     mywhoosh_token = Column(Text, nullable=True)
     mywhoosh_id = Column(String(100), nullable=True)
     last_mywhoosh_sync = Column(String(50), nullable=True)
 
+    # Zwift credentials & sync state
+    zwift_username = Column(String(255), nullable=True)
+    zwift_password = Column(String(255), nullable=True)
+    zwift_token = Column(Text, nullable=True)
+    zwift_id = Column(String(100), nullable=True)
+    last_zwift_sync = Column(String(50), nullable=True)
+
 class CoachLog(Base):
     __tablename__ = "coach_logs"
 
     id = Column(Integer, primary_key=True, index=True)
+    athlete_id = Column(Integer, ForeignKey("athlete_profile.id"), default=1, index=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     role = Column(String(50)) # user, assistant, system
     message = Column(Text)
@@ -146,11 +159,17 @@ def init_db():
         for col, col_type in [
             ("coaching_mode", "VARCHAR(50) DEFAULT 'autonomous'"),
             ("gemini_model", "VARCHAR(50) DEFAULT 'gemini-3.6-flash'"),
+            ("platform", "VARCHAR(50) DEFAULT 'mywhoosh'"),
             ("mywhoosh_email", "VARCHAR(255)"),
             ("mywhoosh_password", "VARCHAR(255)"),
             ("mywhoosh_token", "TEXT"),
             ("mywhoosh_id", "VARCHAR(100)"),
-            ("last_mywhoosh_sync", "VARCHAR(50)")
+            ("last_mywhoosh_sync", "VARCHAR(50)"),
+            ("zwift_username", "VARCHAR(255)"),
+            ("zwift_password", "VARCHAR(255)"),
+            ("zwift_token", "TEXT"),
+            ("zwift_id", "VARCHAR(100)"),
+            ("last_zwift_sync", "VARCHAR(50)")
         ]:
             try:
                 conn.execute(text(f"ALTER TABLE athlete_profile ADD COLUMN {col} {col_type}"))
@@ -158,20 +177,41 @@ def init_db():
             except Exception:
                 pass
 
-        # Migrate CalendarEvent columns for race & event support
+        # Migrate CalendarEvent columns for race, event support, and athlete scoping
         for col, col_type in [
             ("event_type", "VARCHAR(50) DEFAULT 'workout'"),
             ("is_manual", "BOOLEAN DEFAULT 0"),
             ("race_priority", "VARCHAR(10)"),
             ("race_type", "VARCHAR(100)"),
             ("target_distance_km", "FLOAT"),
-            ("activity_id", "VARCHAR(50)")
+            ("activity_id", "VARCHAR(50)"),
+            ("athlete_id", "INTEGER DEFAULT 1")
         ]:
             try:
                 conn.execute(text(f"ALTER TABLE calendar_events ADD COLUMN {col} {col_type}"))
                 conn.commit()
             except Exception:
                 pass
+
+        # Migrate activities and coach_logs for athlete scoping
+        for tbl, col, col_type in [
+            ("activities", "athlete_id", "INTEGER DEFAULT 1"),
+            ("coach_logs", "athlete_id", "INTEGER DEFAULT 1")
+        ]:
+            try:
+                conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN {col} {col_type}"))
+                conn.commit()
+            except Exception:
+                pass
+
+        # Backfill athlete_id to 1 for existing records
+        try:
+            conn.execute(text("UPDATE calendar_events SET athlete_id = 1 WHERE athlete_id IS NULL"))
+            conn.execute(text("UPDATE activities SET athlete_id = 1 WHERE athlete_id IS NULL"))
+            conn.execute(text("UPDATE coach_logs SET athlete_id = 1 WHERE athlete_id IS NULL"))
+            conn.commit()
+        except Exception:
+            pass
 
         # Backfill is_manual for existing user-created events (races, custom events, or events with athlete notes)
         try:
@@ -191,13 +231,13 @@ def init_db():
         try:
             conn.execute(text("""
                 INSERT OR IGNORE INTO activities (
-                    id, name, type, start_date, start_date_local, elapsed_time, moving_time,
+                    id, athlete_id, name, type, start_date, start_date_local, elapsed_time, moving_time,
                     distance, total_elevation_gain, average_watts, weighted_average_watts, max_watts,
                     average_heartrate, max_heartrate, average_cadence, calculated_tss,
                     matched_event_id, raw_json, synced_at
                 )
                 SELECT 
-                    id, name, type, start_date, start_date_local, elapsed_time, moving_time,
+                    id, 1, name, type, start_date, start_date_local, elapsed_time, moving_time,
                     distance, total_elevation_gain, average_watts, weighted_average_watts, max_watts,
                     average_heartrate, max_heartrate, average_cadence, calculated_tss,
                     matched_event_id, raw_json, synced_at 
@@ -214,10 +254,35 @@ def init_db():
         if not profile:
             profile = AthleteProfile(
                 id=1,
-                name="Athlete",
+                name="Xander",
+                platform="mywhoosh",
                 gemini_api_key=os.environ.get("GEMINI_API_KEY", "")
             )
             db.add(profile)
+            db.commit()
+        else:
+            if profile.name == "Athlete":
+                profile.name = "Xander"
+            if not profile.platform:
+                profile.platform = "mywhoosh"
+            db.commit()
+
+        # Seed secondary profile (Mom - Zwift) if not exists
+        profile2 = db.query(AthleteProfile).filter(AthleteProfile.id == 2).first()
+        if not profile2:
+            profile2 = AthleteProfile(
+                id=2,
+                name="Mom",
+                platform="zwift",
+                ftp=150,
+                max_hr=175,
+                weight_kg=65.0,
+                coaching_mode="autonomous",
+                primary_goal="Cardio Fitness & Zwift Group Rides",
+                available_days="Monday,Wednesday,Friday,Saturday",
+                gemini_api_key=profile.gemini_api_key or os.environ.get("GEMINI_API_KEY", "")
+            )
+            db.add(profile2)
             db.commit()
 
         # Seed MyWhoosh workouts if empty

@@ -110,15 +110,20 @@ def test_gemini_connection(api_key: Optional[str] = None, model: Optional[str] =
             "message": f"Connection failed: {str(e)}"
         }
 
-def get_athlete_context(db: Session) -> str:
+def get_athlete_context(db: Session, athlete_id: int = 1) -> str:
     """Builds a comprehensive context string of athlete profile, fitness metrics, and recent ride history."""
-    profile = db.query(AthleteProfile).filter(AthleteProfile.id == 1).first()
+    profile = db.query(AthleteProfile).filter(AthleteProfile.id == athlete_id).first()
+    if not profile:
+        profile = db.query(AthleteProfile).filter(AthleteProfile.id == 1).first()
     if not profile:
         return "Athlete profile: Standard cyclist, FTP 220W, Max HR 185."
 
-    # Fetch last 10 completed activities from RideActivity (synced from MyWhoosh)
-    recent_rides = db.query(RideActivity).order_by(RideActivity.start_date_local.desc()).limit(10).all()
+    # Fetch last 10 completed activities from RideActivity for this athlete
+    recent_rides = db.query(RideActivity).filter(
+        RideActivity.athlete_id == profile.id
+    ).order_by(RideActivity.start_date_local.desc()).limit(10).all()
     recent_events = db.query(CalendarEvent).filter(
+        CalendarEvent.athlete_id == profile.id,
         CalendarEvent.status == "completed"
     ).order_by(CalendarEvent.date.desc()).limit(10).all()
 
@@ -197,16 +202,19 @@ async def generate_training_plan(
     start_date: str,
     days: int = 7,
     user_instructions: str = "",
-    overwrite_existing: bool = True
+    overwrite_existing: bool = True,
+    athlete_id: int = 1
 ) -> Dict[str, Any]:
-    """Uses Gemini to generate a structured workout calendar based on MyWhoosh workouts, periodized for upcoming races."""
-    profile = db.query(AthleteProfile).filter(AthleteProfile.id == 1).first()
+    """Uses Gemini to generate a structured workout calendar based on workouts, periodized for upcoming races."""
+    profile = db.query(AthleteProfile).filter(AthleteProfile.id == athlete_id).first()
+    if not profile:
+        profile = db.query(AthleteProfile).filter(AthleteProfile.id == 1).first()
     client = get_gemini_client(profile.gemini_api_key if profile else None)
     if not client:
         return {"error": "Gemini API key is not configured. Please set it in Settings."}
 
     preferred_model = (profile.gemini_model if profile and profile.gemini_model else DEFAULT_MODEL)
-    athlete_ctx = get_athlete_context(db)
+    athlete_ctx = get_athlete_context(db, athlete_id=profile.id if profile else 1)
     catalog = get_workout_catalog_sample(db, max_per_zone=20)
 
     # Compute end date of the planning window
@@ -216,6 +224,7 @@ async def generate_training_plan(
 
     # Fetch upcoming target races (in and beyond this block for forward-looking periodization)
     upcoming_races = db.query(CalendarEvent).filter(
+        CalendarEvent.athlete_id == profile.id,
         CalendarEvent.event_type == "race",
         CalendarEvent.date >= start_date
     ).order_by(CalendarEvent.date.asc()).all()
@@ -233,6 +242,7 @@ async def generate_training_plan(
 
     # Fetch athlete's manually scheduled events / rest days in this planning window
     manual_events = db.query(CalendarEvent).filter(
+        CalendarEvent.athlete_id == profile.id,
         CalendarEvent.date >= start_date,
         CalendarEvent.date < end_date_str,
         CalendarEvent.is_manual == True
@@ -249,6 +259,7 @@ async def generate_training_plan(
 
     # Fetch existing scheduled rides or rest days in this planning window
     existing_events = db.query(CalendarEvent).filter(
+        CalendarEvent.athlete_id == profile.id,
         CalendarEvent.date >= start_date,
         CalendarEvent.date < end_date_str
     ).order_by(CalendarEvent.date.asc()).all()
@@ -345,10 +356,11 @@ Respond with ONLY valid JSON adhering strictly to this schema:
         
         plan_data = json.loads(response.text)
         
-        # If overwrite requested, clean uncompleted AI-generated events in this date window
+        # If overwrite requested, clean uncompleted AI-generated events in this date window for this athlete
         # STRICT PRESERVATION: Completed rides, target races, custom rides, and athlete manual rest days are NEVER deleted!
         if overwrite_existing:
             db.query(CalendarEvent).filter(
+                CalendarEvent.athlete_id == profile.id,
                 CalendarEvent.date >= start_date,
                 CalendarEvent.date < end_date_str,
                 CalendarEvent.status != "completed",
@@ -367,6 +379,7 @@ Respond with ONLY valid JSON adhering strictly to this schema:
 
             # PRESERVE RACES, CUSTOM COMMITTED EVENTS, ATHLETE MANUAL REST DAYS, & COMPLETED RIDES
             existing_protected = db.query(CalendarEvent).filter(
+                CalendarEvent.athlete_id == profile.id,
                 CalendarEvent.date == event_date,
                 or_(
                     CalendarEvent.event_type.in_(["race", "custom"]),
@@ -380,6 +393,7 @@ Respond with ONLY valid JSON adhering strictly to this schema:
             # If not already wiped by batch overwrite, clean non-completed AI placeholder on this specific day
             if not overwrite_existing:
                 db.query(CalendarEvent).filter(
+                    CalendarEvent.athlete_id == profile.id,
                     CalendarEvent.date == event_date,
                     CalendarEvent.status != "completed",
                     or_(CalendarEvent.is_manual == False, CalendarEvent.is_manual.is_(None)),
@@ -387,6 +401,7 @@ Respond with ONLY valid JSON adhering strictly to this schema:
                 ).delete(synchronize_session=False)
 
             event = CalendarEvent(
+                athlete_id=profile.id,
                 date=event_date,
                 title=item.get("title", "Workout"),
                 workout_id=item.get("workout_id"),
@@ -404,6 +419,7 @@ Respond with ONLY valid JSON adhering strictly to this schema:
         # Log coach plan generation
         fb_msg = f" (fallback from {preferred_model})" if fallback_used else ""
         log_entry = CoachLog(
+            athlete_id=profile.id,
             role="assistant",
             message=f"Generated {days}-day plan via {model_used}{fb_msg}: {plan_data.get('weekly_focus')}. Overview: {plan_data.get('coach_overview')}",
             context_type="plan_generation"
@@ -448,19 +464,24 @@ Respond with ONLY valid JSON adhering strictly to this schema:
 async def adapt_calendar_after_activity(
     db: Session,
     completed_event: CalendarEvent,
-    activity: RideActivity
+    activity: RideActivity,
+    athlete_id: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Evaluates completed ride against plan and adapts upcoming calendar workouts if needed.
     """
-    profile = db.query(AthleteProfile).filter(AthleteProfile.id == 1).first()
+    aid = athlete_id or completed_event.athlete_id or 1
+    profile = db.query(AthleteProfile).filter(AthleteProfile.id == aid).first()
+    if not profile:
+        profile = db.query(AthleteProfile).filter(AthleteProfile.id == 1).first()
     client = get_gemini_client(profile.gemini_api_key if profile else None)
     if not client:
         return {"adapted": False, "message": "Gemini API key not configured."}
 
-    # Fetch upcoming scheduled events for the next 7 days
+    # Fetch upcoming scheduled events for the next 7 days for this athlete
     today_str = completed_event.date
     upcoming_events = db.query(CalendarEvent).filter(
+        CalendarEvent.athlete_id == aid,
         CalendarEvent.date > today_str,
         CalendarEvent.status == "scheduled"
     ).order_by(CalendarEvent.date.asc()).limit(7).all()
@@ -548,7 +569,10 @@ Respond with ONLY valid JSON adhering strictly to:
         
         if result.get("requires_adjustment") and result.get("adjustments"):
             for adj in result["adjustments"]:
-                ev = db.query(CalendarEvent).filter(CalendarEvent.id == adj["event_id"]).first()
+                ev = db.query(CalendarEvent).filter(
+                    CalendarEvent.athlete_id == aid,
+                    CalendarEvent.id == adj["event_id"]
+                ).first()
                 if ev and ev.status == "scheduled" and not ev.is_manual and ev.event_type not in ["race", "custom", "rest"]:
                     ev.title = adj.get("new_title", ev.title)
                     ev.primary_zone = adj.get("new_zone", ev.primary_zone)
@@ -560,6 +584,7 @@ Respond with ONLY valid JSON adhering strictly to:
         # Log to coach logs
         fb_msg = f" via {model_used}" + (f" (fallback from {preferred_model})" if fallback_used else "")
         db.add(CoachLog(
+            athlete_id=aid,
             role="assistant",
             message=f"Activity Adaptation for {completed_event.date}{fb_msg}: {debrief}",
             context_type="adaptation"
@@ -579,24 +604,31 @@ Respond with ONLY valid JSON adhering strictly to:
         logger.error(f"Error in Gemini adaptation: {e}")
         return {"adapted": False, "error": str(e)}
 
-async def chat_with_coach(db: Session, user_message: str) -> str:
+async def chat_with_coach(db: Session, user_message: str, athlete_id: int = 1) -> str:
     """Conversational assistant for athlete training advice and questions."""
-    profile = db.query(AthleteProfile).filter(AthleteProfile.id == 1).first()
+    profile = db.query(AthleteProfile).filter(AthleteProfile.id == athlete_id).first()
+    if not profile:
+        profile = db.query(AthleteProfile).filter(AthleteProfile.id == 1).first()
     client = get_gemini_client(profile.gemini_api_key if profile else None)
     if not client:
         return "Please configure your Gemini API Key in Settings to chat with your AI Coach."
 
-    athlete_ctx = get_athlete_context(db)
+    athlete_ctx = get_athlete_context(db, athlete_id=profile.id if profile else 1)
     
     # Recent history
-    recent_logs = db.query(CoachLog).order_by(CoachLog.timestamp.desc()).limit(6).all()
+    recent_logs = db.query(CoachLog).filter(
+        CoachLog.athlete_id == profile.id
+    ).order_by(CoachLog.timestamp.desc()).limit(6).all()
     recent_logs.reverse()
     
     history_text = "\n".join([f"{l.role.upper()}: {l.message}" for l in recent_logs])
 
     # Upcoming workouts
     today_str = datetime.datetime.utcnow().strftime("%Y-%m-%d")
-    upcoming = db.query(CalendarEvent).filter(CalendarEvent.date >= today_str).order_by(CalendarEvent.date.asc()).limit(5).all()
+    upcoming = db.query(CalendarEvent).filter(
+        CalendarEvent.athlete_id == profile.id,
+        CalendarEvent.date >= today_str
+    ).order_by(CalendarEvent.date.asc()).limit(5).all()
     upcoming_text = "\n".join([f"- {u.date}: {u.title} ({u.primary_zone}, {u.planned_tss} TSS, {u.status})" for u in upcoming])
 
     prompt = f"""
@@ -627,8 +659,8 @@ Provide a helpful, encouraging, and concise response (1-3 short paragraphs). If 
         reply = response.text.strip()
         
         # Save to logs
-        db.add(CoachLog(role="user", message=user_message, context_type="chat"))
-        db.add(CoachLog(role="assistant", message=reply, context_type="chat"))
+        db.add(CoachLog(athlete_id=profile.id, role="user", message=user_message, context_type="chat"))
+        db.add(CoachLog(athlete_id=profile.id, role="assistant", message=reply, context_type="chat"))
         db.commit()
         return reply
 
