@@ -1,0 +1,17 @@
+services:
+  whooshcoach:
+    build: .
+    container_name: whooshcoach
+    restart: unless-stopped
+    ports:
+      - "8555:8555"
+    environment:
+      - DATA_DIR=/app/data
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8555/api/settings"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
