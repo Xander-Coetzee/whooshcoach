@@ -516,7 +516,7 @@ async function generatePlan() {
           modelBadge.innerText = `Fallback: ${data.model_used}`;
           modelBadge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
         } else {
-          modelBadge.innerText = data.model_used || 'gemini-3.6-flash';
+          modelBadge.innerText = data.model_used || 'gemini-3.5-flash';
           modelBadge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20";
         }
       }

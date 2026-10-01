@@ -118,7 +118,7 @@ class AthleteProfile(Base):
     available_days = Column(String(255), default="Tuesday,Thursday,Saturday,Sunday")
     
     gemini_api_key = Column(String(255), nullable=True)
-    gemini_model = Column(String(50), default="gemini-3.6-flash")
+    gemini_model = Column(String(50), default="gemini-3.5-flash")
 
     # MyWhoosh credentials & sync state
     mywhoosh_email = Column(String(255), nullable=True)

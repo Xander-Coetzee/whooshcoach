@@ -11,8 +11,8 @@ from app.database import AthleteProfile, Workout, CalendarEvent, RideActivity, C
 
 logger = logging.getLogger("whooshcoach.coach")
 
-DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
-FALLBACK_MODELS = ["gemini-3.6-flash", "gemini-2.5-flash-lite", "gemini-3.5-flash"]
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
 
 def get_gemini_client(api_key: Optional[str] = None):
     """Initializes the google-genai client."""
@@ -38,38 +38,55 @@ def generate_content_with_fallback(
     automatically falls back to alternative models in FALLBACK_MODELS.
     Returns: (response, model_used, fallback_occurred)
     """
-    candidates = [preferred_model]
+    # Map any legacy or deprecated model names to active official models
+    model_alias_map = {
+        "gemini-3.6-flash": "gemini-3.5-flash",
+        "gemini-2.5-flash": "gemini-3.5-flash",
+        "gemini-2.0-flash": "gemini-3.5-flash",
+        "gemini-1.5-flash": "gemini-3.5-flash",
+        "gemini-2.5-flash-lite": "gemini-3.5-flash-lite",
+    }
+    normalized_preferred = model_alias_map.get(preferred_model, preferred_model)
+
+    candidates = [normalized_preferred]
     for m in FALLBACK_MODELS:
         if m not in candidates:
             candidates.append(m)
 
     last_error = None
     for idx, model_name in enumerate(candidates):
-        try:
-            logger.info(f"Querying Gemini model '{model_name}'...")
-            response = client.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=config
-            )
-            fallback_occurred = (model_name != preferred_model)
-            if fallback_occurred:
-                logger.warning(f"Fallback active: Successfully used '{model_name}' (preferred was '{preferred_model}').")
-            return response, model_name, fallback_occurred
-        except Exception as e:
-            last_error = e
-            err_str = str(e).lower()
-            is_recoverable = any(code in err_str for code in [
-                "429", "resource_exhausted", "quota", "rate_limit", "rate limit",
-                "404", "not_found", "no longer available", "503", "unavailable", "overloaded"
-            ])
-            if is_recoverable and idx < len(candidates) - 1:
-                next_model = candidates[idx + 1]
-                logger.warning(f"Model '{model_name}' failed with {e}. Falling back to '{next_model}'...")
-                continue
-            else:
-                logger.error(f"Gemini API error with model '{model_name}': {e}")
-                raise e
+        for attempt in range(2):
+            try:
+                print(f"[Gemini] Querying model '{model_name}' (attempt {attempt+1})...", flush=True)
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=config
+                )
+                fallback_occurred = (model_name != preferred_model)
+                if fallback_occurred:
+                    print(f"[Gemini] Fallback active: Successfully used '{model_name}' (preferred was '{preferred_model}').", flush=True)
+                return response, model_name, fallback_occurred
+            except Exception as e:
+                last_error = e
+                err_str = str(e).lower()
+                is_recoverable = any(code in err_str for code in [
+                    "429", "resource_exhausted", "quota", "rate_limit", "rate limit",
+                    "404", "not_found", "no longer available", "503", "unavailable", "overloaded"
+                ])
+                print(f"[Gemini] Model '{model_name}' error (attempt {attempt+1}): {e}", flush=True)
+                if "503" in err_str and attempt == 0:
+                    time.sleep(1.5)
+                    continue
+                break
+
+        if idx < len(candidates) - 1:
+            next_model = candidates[idx + 1]
+            print(f"[Gemini] Falling back from '{model_name}' to '{next_model}'...", flush=True)
+            continue
+        else:
+            print(f"[Gemini API ERROR] All candidate models exhausted. Last error: {last_error}", flush=True)
+            raise last_error
 
     raise last_error
 
@@ -222,6 +239,19 @@ async def generate_training_plan(
     end_dt = start_dt + datetime.timedelta(days=days)
     end_date_str = end_dt.strftime("%Y-%m-%d")
 
+    # If overwrite requested, clean uncompleted AI-generated events in this date window for this athlete BEFORE building context!
+    # STRICT PRESERVATION: Completed rides, target races, custom rides, and athlete manual rest days are NEVER deleted!
+    if overwrite_existing:
+        db.query(CalendarEvent).filter(
+            CalendarEvent.athlete_id == profile.id,
+            CalendarEvent.date >= start_date,
+            CalendarEvent.date < end_date_str,
+            CalendarEvent.status != "completed",
+            or_(CalendarEvent.is_manual == False, CalendarEvent.is_manual.is_(None)),
+            CalendarEvent.event_type.notin_(["race", "custom"])
+        ).delete(synchronize_session=False)
+        db.commit()
+
     # Fetch upcoming target races (in and beyond this block for forward-looking periodization)
     upcoming_races = db.query(CalendarEvent).filter(
         CalendarEvent.athlete_id == profile.id,
@@ -257,7 +287,7 @@ async def generate_training_plan(
     else:
         manual_rest_block = "None specified by athlete in this date window."
 
-    # Fetch existing scheduled rides or rest days in this planning window
+    # Fetch existing scheduled rides or rest days in this planning window (committed / completed / manual)
     existing_events = db.query(CalendarEvent).filter(
         CalendarEvent.athlete_id == profile.id,
         CalendarEvent.date >= start_date,
@@ -275,6 +305,39 @@ async def generate_training_plan(
         existing_event_lines.append(f"- {ev.date}: {ev_type_str}{manual_tag} \"{ev.title}\" ({ev.planned_tss or 0} TSS, Status: {ev.status})")
     existing_cal_block = "\n".join(existing_event_lines) if existing_event_lines else "No other pre-existing rides or commitments in this date range."
 
+    # Parse available training days from athlete profile
+    raw_available = (profile.available_days or "") if profile else ""
+    available_days_list = [d.strip() for d in raw_available.split(",") if d.strip()]
+    available_days_normalized = set(d.lower() for d in available_days_list)
+    available_days_display = ", ".join(available_days_list) if available_days_list else "Every day (all days available)"
+
+    # Build explicit day-by-day availability calendar schedule for prompt
+    calendar_schedule_lines = []
+    for i in range(days):
+        curr_dt = start_dt + datetime.timedelta(days=i)
+        curr_date_str = curr_dt.strftime("%Y-%m-%d")
+        weekday_name = curr_dt.strftime("%A")
+
+        if curr_date_str in manual_rest_dates:
+            calendar_schedule_lines.append(
+                f"- {curr_date_str} ({weekday_name}): ATHLETE MANUAL REST DAY -> MANDATORY REST DAY (0 TSS, workout_id=null, status='rest')"
+            )
+        elif any(r.date == curr_date_str for r in upcoming_races):
+            matching_race = next(r for r in upcoming_races if r.date == curr_date_str)
+            prio = f"Priority {matching_race.race_priority} " if matching_race.race_priority else ""
+            calendar_schedule_lines.append(
+                f"- {curr_date_str} ({weekday_name}): TARGET RACE DAY -> {prio}\"{matching_race.title}\" (Do NOT schedule a conflicting workout)"
+            )
+        elif available_days_normalized and weekday_name.lower() not in available_days_normalized:
+            calendar_schedule_lines.append(
+                f"- {curr_date_str} ({weekday_name}): NON-AVAILABLE TRAINING DAY -> MANDATORY REST DAY (0 TSS, workout_id=null, status='rest')"
+            )
+        else:
+            calendar_schedule_lines.append(
+                f"- {curr_date_str} ({weekday_name}): AVAILABLE TRAINING DAY -> Assign workout or recovery session"
+            )
+    availability_calendar_block = "\n".join(calendar_schedule_lines)
+
     prompt = f"""
 You are an elite endurance cycling coach creating a personalized, periodized training calendar.
 Given the athlete's profile, recent completed ride history, existing calendar events, and upcoming target races, plan a {days}-day training schedule starting on {start_date}.
@@ -290,6 +353,10 @@ ATHLETE COMMITTED REST DAYS (MANDATORY RECOVERY - NEVER OVERRIDE):
 OTHER EXISTING COMMITTED EVENTS IN THIS DATE RANGE:
 {existing_cal_block}
 
+DAY-BY-DAY CALENDAR & ATHLETE AVAILABILITY:
+Athlete's Configured Available Training Days: {available_days_display}
+{availability_calendar_block}
+
 USER SPECIAL INSTRUCTIONS / FOCUS:
 {user_instructions or 'None provided. Focus on balanced progressive training tailored to their goals and upcoming races.'}
 
@@ -297,18 +364,19 @@ AVAILABLE MYWHOOSH WORKOUT CATALOG:
 {catalog}
 
 RULES FOR THE PLAN & PERIODIZATION:
-1. MANDATORY ATHLETE REST DAYS: The athlete has explicitly locked in manual rest days on: {', '.join(manual_rest_dates) if manual_rest_dates else 'None'}. You MUST respect these as non-negotiable recovery. Do NOT schedule any workout on these dates. In your JSON response, designate these dates as "Rest Day" with planned_duration_minutes = 0, planned_tss = 0, status = "rest", and workout_id = null. Periodize the rest of the week around these rest days.
-2. ONLY schedule workouts on the athlete's available days ({profile.available_days if profile else 'Any'}).
-3. On non-available days or designated rest days, mark as "Rest Day" with 0 TSS and workout_id = null.
-4. Every scheduled cycling workout MUST select a real workout from the catalog above with its exact ID, Title, and Zone.
-4. AUTONOMOUS DURATION & TSS PRESCRIPTION:
+1. STRICT DAY AVAILABILITY (CRITICAL RULE):
+   - You may ONLY schedule cycling workouts on dates marked "AVAILABLE TRAINING DAY" in the DAY-BY-DAY CALENDAR above.
+   - On every date marked "NON-AVAILABLE TRAINING DAY" or "ATHLETE MANUAL REST DAY", you MUST prescribe a Rest Day (title: "Rest Day", planned_duration_minutes: 0, planned_tss: 0, workout_id: null, status: "rest"). NEVER assign a workout on non-available or manual rest days.
+   - Even if you want to prescribe extra training volume, you MUST fit all training sessions ONLY onto the available training days.
+2. Every scheduled cycling workout on an AVAILABLE day MUST select a real workout from the catalog above with its exact ID, Title, and Zone.
+3. AUTONOMOUS DURATION & TSS PRESCRIPTION:
    - You (the AI Coach) have full discretion and responsibility to decide the exact duration (minutes) and TSS for each session, and the resulting total weekly hours/TSS.
    - Do NOT try to force an arbitrary number. Determine the optimal physiological dose based on:
      * Baseline work capacity from recent completed rides.
      * Proximity, priority, and demands of upcoming races.
      * Fatigue management: ensure high-intensity sessions are paired with adequate rest or active recovery.
    - In "coach_overview", explicitly state your physiological rationale for the prescribed session durations, weekly volume, and TSS breakdown.
-5. RACE PERIODIZATION RULES:
+4. RACE PERIODIZATION RULES:
    - If an A-Race is scheduled within this block (or within 10 days after):
      * 5 to 7 days before an A-Race: Taper training volume by ~40-50% (short 30-45 min sessions) while preserving neuromuscular sharpness with short, crisp Z4/Z5 intervals.
      * Day before the race: Schedule a short 20-35 min pre-race activation/opener (Z1/Z2 with 2-3 micro-efforts) or rest.
@@ -320,7 +388,8 @@ RULES FOR THE PLAN & PERIODIZATION:
      * Treat it as a hard training session without taper.
    - If no race is scheduled:
      * Progressively build base, tempo, sweetspot, or threshold according to the athlete's primary goal, keeping weekly ramp rates safe (~5-8% increase).
-6. Provide a clear coaching rationale in coach_notes for each session.
+5. Provide a clear coaching rationale in coach_notes for each session.
+6. The schedule array MUST include an entry for every single date from {start_date} to {(start_dt + datetime.timedelta(days=days-1)).strftime('%Y-%m-%d')} ({days} days in total).
 
 OUTPUT FORMAT:
 Respond with ONLY valid JSON adhering strictly to this schema:
@@ -356,26 +425,17 @@ Respond with ONLY valid JSON adhering strictly to this schema:
         
         plan_data = json.loads(response.text)
         
-        # If overwrite requested, clean uncompleted AI-generated events in this date window for this athlete
-        # STRICT PRESERVATION: Completed rides, target races, custom rides, and athlete manual rest days are NEVER deleted!
-        if overwrite_existing:
-            db.query(CalendarEvent).filter(
-                CalendarEvent.athlete_id == profile.id,
-                CalendarEvent.date >= start_date,
-                CalendarEvent.date < end_date_str,
-                CalendarEvent.status != "completed",
-                or_(CalendarEvent.is_manual == False, CalendarEvent.is_manual.is_(None)),
-                CalendarEvent.event_type.notin_(["race", "custom"])
-            ).delete(synchronize_session=False)
-
-        # Save generated events to database
-        schedule = plan_data.get("schedule", [])
+        # Save generated events to database with strict guardrails
+        raw_schedule = plan_data.get("schedule", [])
+        schedule_by_date = {item.get("date"): item for item in raw_schedule if item.get("date")}
         saved_events = []
-        
-        for item in schedule:
-            event_date = item.get("date")
-            if not event_date:
-                continue
+        total_calculated_tss = 0
+        total_calculated_minutes = 0.0
+
+        for i in range(days):
+            curr_dt = start_dt + datetime.timedelta(days=i)
+            event_date = curr_dt.strftime("%Y-%m-%d")
+            ev_weekday = curr_dt.strftime("%A")
 
             # PRESERVE RACES, CUSTOM COMMITTED EVENTS, ATHLETE MANUAL REST DAYS, & COMPLETED RIDES
             existing_protected = db.query(CalendarEvent).filter(
@@ -388,6 +448,9 @@ Respond with ONLY valid JSON adhering strictly to this schema:
                 )
             ).first()
             if existing_protected:
+                total_calculated_tss += (existing_protected.planned_tss or 0)
+                total_calculated_minutes += (existing_protected.planned_duration_minutes or 0.0)
+                saved_events.append(existing_protected)
                 continue
 
             # If not already wiped by batch overwrite, clean non-completed AI placeholder on this specific day
@@ -400,21 +463,79 @@ Respond with ONLY valid JSON adhering strictly to this schema:
                     CalendarEvent.event_type.notin_(["race", "custom"])
                 ).delete(synchronize_session=False)
 
+            item = schedule_by_date.get(event_date)
+            is_non_available = bool(available_days_normalized and ev_weekday.lower() not in available_days_normalized)
+            is_manual_rest = event_date in manual_rest_dates
+
+            if is_non_available or is_manual_rest:
+                # Python Guardrail: Force to Rest Day
+                event_title = "Rest Day"
+                workout_id = None
+                event_type = "rest"
+                primary_zone = "Z1 - Recovery"
+                planned_duration = 0.0
+                planned_tss = 0
+                event_status = "rest"
+                if is_non_available:
+                    coach_notes = (item.get("coach_notes") if item else "") or f"Scheduled rest: {ev_weekday} is not an available training day."
+                else:
+                    coach_notes = (item.get("coach_notes") if item else "") or "Scheduled rest: Athlete manual rest day."
+            elif not item:
+                # Not returned by Gemini -> Default to Rest Day
+                event_title = "Rest Day"
+                workout_id = None
+                event_type = "rest"
+                primary_zone = "Z1 - Recovery"
+                planned_duration = 0.0
+                planned_tss = 0
+                event_status = "rest"
+                coach_notes = "Rest day."
+            else:
+                raw_title = item.get("title", "Workout")
+                raw_status = item.get("status", "scheduled")
+                raw_wid = item.get("workout_id")
+                is_rest_item = (raw_status == "rest" or "rest" in raw_title.lower() or raw_wid is None)
+
+                if is_rest_item:
+                    event_title = raw_title if "rest" in raw_title.lower() else "Rest Day"
+                    workout_id = None
+                    event_type = "rest"
+                    primary_zone = "Z1 - Recovery"
+                    planned_duration = 0.0
+                    planned_tss = 0
+                    event_status = "rest"
+                    coach_notes = item.get("coach_notes", "Recovery day.")
+                else:
+                    event_title = raw_title
+                    workout_id = raw_wid
+                    event_type = "workout"
+                    primary_zone = item.get("primary_zone", "Z2 - Endurance")
+                    planned_duration = float(item.get("planned_duration_minutes", 60.0))
+                    planned_tss = int(item.get("planned_tss", 50))
+                    event_status = "scheduled"
+                    coach_notes = item.get("coach_notes", "")
+
             event = CalendarEvent(
                 athlete_id=profile.id,
                 date=event_date,
-                title=item.get("title", "Workout"),
-                workout_id=item.get("workout_id"),
-                event_type="workout" if "rest" not in item.get("title", "").lower() else "rest",
+                title=event_title,
+                workout_id=workout_id,
+                event_type=event_type,
                 is_manual=False,
-                primary_zone=item.get("primary_zone", "Z2 - Endurance"),
-                planned_duration_minutes=float(item.get("planned_duration_minutes", 60.0)),
-                planned_tss=int(item.get("planned_tss", 50)),
-                status=item.get("status", "scheduled"),
-                coach_notes=item.get("coach_notes", "")
+                primary_zone=primary_zone,
+                planned_duration_minutes=planned_duration,
+                planned_tss=planned_tss,
+                status=event_status,
+                coach_notes=coach_notes
             )
             db.add(event)
             saved_events.append(event)
+            total_calculated_tss += planned_tss
+            total_calculated_minutes += planned_duration
+
+        total_calculated_hours = round(total_calculated_minutes / 60.0, 1)
+        reported_tss = total_calculated_tss
+        reported_hours = total_calculated_hours
 
         # Log coach plan generation
         fb_msg = f" (fallback from {preferred_model})" if fallback_used else ""
@@ -427,7 +548,7 @@ Respond with ONLY valid JSON adhering strictly to this schema:
         db.add(log_entry)
         db.commit()
 
-        print(f"[Coach] Generated {days}-day plan via {model_used}{fb_msg}: {len(saved_events)} events, {plan_data.get('total_planned_tss')} TSS", flush=True)
+        print(f"[Coach] Generated {days}-day plan via {model_used}{fb_msg}: {len(saved_events)} events, {reported_tss} TSS ({reported_hours}h)", flush=True)
 
         return {
             "success": True,
@@ -436,8 +557,8 @@ Respond with ONLY valid JSON adhering strictly to this schema:
             "model_used": model_used,
             "fallback_used": fallback_used,
             "weekly_focus": plan_data.get("weekly_focus"),
-            "total_planned_tss": plan_data.get("total_planned_tss"),
-            "total_planned_hours": plan_data.get("total_planned_hours"),
+            "total_planned_tss": reported_tss,
+            "total_planned_hours": reported_hours,
             "coach_overview": plan_data.get("coach_overview"),
             "scheduled_count": len(saved_events),
             "events": [
@@ -449,7 +570,7 @@ Respond with ONLY valid JSON adhering strictly to this schema:
                     "planned_tss": ev.planned_tss or 0,
                     "status": ev.status or "scheduled",
                     "event_type": ev.event_type or "workout",
-                    "coach_notes": ev.coach_notes or ""
+                    "coach_notes": getattr(ev, "coach_notes", "") or ""
                 }
                 for ev in saved_events
             ]
