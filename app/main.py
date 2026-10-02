@@ -269,7 +269,8 @@ def get_calendar_events(
         "Z6 - Anaerobic": "#a855f7",   # Purple
         "Free Ride": "#06b6d4",        # Cyan
         "Rest Day": "#6b7280",         # Gray
-        "Unplanned Ride": "#ec4899"    # Pink
+        "Unplanned Ride": "#ec4899",   # Pink
+        "Outdoor Ride": "#fc4c02"      # Strava Orange
     }
 
     for ev in events:
@@ -290,6 +291,10 @@ def get_calendar_events(
                 title_prefix = "🎖️ [C-Race] "
                 color = "#0284c7"
                 border_color = "#38bdf8"
+        elif ev.event_type == "outdoor_ride" or ev.primary_zone == "Outdoor Ride":
+            title_prefix = "🚴‍♂️ [Outdoor] "
+            color = "#fc4c02" # Strava orange
+            border_color = "#e34000"
         elif ev.status == "completed":
             title_prefix = "✓ "
         elif ev.status == "skipped":
@@ -315,6 +320,8 @@ def get_calendar_events(
                 "athlete_id": ev.athlete_id,
                 "event_type": ev.event_type or "workout",
                 "is_manual": bool(ev.is_manual),
+                "is_outdoor": ev.event_type == "outdoor_ride" or ev.primary_zone == "Outdoor Ride",
+                "ride_source": "strava" if (ev.activity_id and "strava" in ev.activity_id) else ("zwift" if (ev.activity_id and "zwift" in ev.activity_id) else "mywhoosh"),
                 "race_priority": ev.race_priority,
                 "race_type": ev.race_type,
                 "target_distance_km": ev.target_distance_km,
@@ -696,6 +703,8 @@ def get_dashboard_stats(athlete_id: int = Query(1), db: Session = Depends(get_db
     completed_tss = sum(e.actual_tss or e.planned_tss or 0 for e in week_events if e.status == "completed")
     completed_hours = sum((e.actual_duration_minutes or e.planned_duration_minutes or 0) / 60.0 for e in week_events if e.status == "completed")
     completed_rides = sum(1 for e in week_events if e.status == "completed")
+    completed_indoor_rides = sum(1 for e in week_events if e.status == "completed" and e.event_type != "outdoor_ride" and e.primary_zone != "Outdoor Ride")
+    completed_outdoor_rides = sum(1 for e in week_events if e.status == "completed" and (e.event_type == "outdoor_ride" or e.primary_zone == "Outdoor Ride"))
 
     # Today's session for this athlete
     today_str = today.strftime("%Y-%m-%d")
@@ -734,6 +743,8 @@ def get_dashboard_stats(athlete_id: int = Query(1), db: Session = Depends(get_db
         "completed_tss": completed_tss,
         "completed_hours": round(completed_hours, 1),
         "completed_rides": completed_rides,
+        "completed_indoor_rides": completed_indoor_rides,
+        "completed_outdoor_rides": completed_outdoor_rides,
         "today_workout": today_data,
         "athlete_name": profile.name if profile else f"Athlete {athlete_id}",
         "platform": getattr(profile, "platform", "mywhoosh") if profile else "mywhoosh",

@@ -135,10 +135,18 @@ async function openEventDetails(eventObj) {
   if (props.event_type === 'race') {
     const prio = props.race_priority || 'A';
     document.getElementById('modalZoneTag').innerText = `🏆 ${prio}-Race`;
+    document.getElementById('modalZoneTag').className = "px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30";
     document.getElementById('modalDescription').innerText = props.athlete_notes || "Scheduled target race.";
     document.getElementById('modalSteps').innerText = `Discipline: ${props.race_type || 'Road Race'}\nTarget Distance: ${props.target_distance_km ? props.target_distance_km + ' km' : 'Not specified'}\nPlanned Duration: ${props.planned_duration_minutes || 0} mins\nTarget TSS: ${props.planned_tss || 0}\nStrategy Notes: ${props.athlete_notes || 'None'}`;
     if (mwLink) mwLink.classList.add('hidden');
     if (zwoBtn) zwoBtn.classList.remove('hidden');
+  } else if (props.event_type === 'outdoor_ride' || props.is_outdoor) {
+    document.getElementById('modalZoneTag').innerText = "🚴‍♂️ Outdoor Ride (Strava)";
+    document.getElementById('modalZoneTag').className = "px-2.5 py-1 rounded-full text-xs font-bold bg-orange-500/20 text-orange-400 border border-orange-500/40";
+    document.getElementById('modalDescription').innerText = props.athlete_notes || "Outside ride synced from Strava.";
+    document.getElementById('modalSteps').innerText = "Real-world road / gravel ride recorded outdoors.\nVolume, distance, and training stress score (TSS) factored into AI coaching.";
+    if (mwLink) mwLink.classList.add('hidden');
+    if (zwoBtn) zwoBtn.classList.add('hidden');
   } else if (props.event_type === 'rest' || props.status === 'rest') {
     document.getElementById('modalDescription').innerText = props.athlete_notes || "Rest / recovery day.";
     document.getElementById('modalSteps').innerText = "Rest day - no interval steps.";
@@ -259,6 +267,7 @@ function switchAddEventType(type) {
   document.getElementById('addEventType').value = type;
 
   const tabRace = document.getElementById('tabAddRace');
+  const tabOutdoor = document.getElementById('tabAddOutdoor');
   const tabWorkout = document.getElementById('tabAddWorkout');
   const tabRest = document.getElementById('tabAddRest');
   const racePrio = document.getElementById('racePriorityGroup');
@@ -272,6 +281,7 @@ function switchAddEventType(type) {
   const inactiveClass = "flex-1 py-1.5 px-3 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
 
   tabRace.className = type === 'race' ? `${activeClass} bg-amber-500 text-slate-950` : inactiveClass;
+  if (tabOutdoor) tabOutdoor.className = type === 'outdoor' ? `${activeClass} bg-orange-500 text-slate-950` : inactiveClass;
   tabWorkout.className = type === 'workout' ? `${activeClass} bg-sky-600 text-white` : inactiveClass;
   tabRest.className = type === 'rest' ? `${activeClass} bg-slate-700 text-white` : inactiveClass;
 
@@ -282,12 +292,19 @@ function switchAddEventType(type) {
     titleLabel.innerText = "Race / Event Name";
     titleInput.placeholder = "e.g. Cape Town Cycle Tour";
     submitBtn.className = "px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm";
+  } else if (type === 'outdoor') {
+    racePrio.classList.add('hidden');
+    raceDetails.classList.add('hidden');
+    metrics.classList.remove('hidden');
+    titleLabel.innerText = "Outdoor Ride Title";
+    titleInput.placeholder = "e.g. Saturday Group Ride (Strava)";
+    submitBtn.className = "px-5 py-2 bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm";
   } else if (type === 'workout') {
     racePrio.classList.add('hidden');
     raceDetails.classList.add('hidden');
     metrics.classList.remove('hidden');
     titleLabel.innerText = "Workout Title";
-    titleInput.placeholder = "e.g. Outdoor Hill Repeats";
+    titleInput.placeholder = "e.g. 40/20s #1 or Sweetspot";
     submitBtn.className = "px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm";
   } else if (type === 'rest') {
     racePrio.classList.add('hidden');
@@ -315,9 +332,9 @@ async function submitAddEvent(e) {
     athlete_id: currentAthleteId,
     date: date,
     title: title,
-    event_type: type,
+    event_type: type === 'outdoor' ? 'outdoor_ride' : type,
     athlete_notes: notes,
-    coach_notes: type === 'race' ? `Target race event: ${title}` : ''
+    coach_notes: type === 'race' ? `Target race event: ${title}` : (type === 'outdoor' ? `Outdoor ride: ${title}` : '')
   };
 
   if (type === 'race') {
@@ -328,6 +345,10 @@ async function submitAddEvent(e) {
     payload.primary_zone = "Race";
     payload.planned_duration_minutes = parseFloat(document.getElementById('addEventDuration').value) || 180;
     payload.planned_tss = parseInt(document.getElementById('addEventTss').value, 10) || 180;
+  } else if (type === 'outdoor') {
+    payload.primary_zone = "Outdoor Ride";
+    payload.planned_duration_minutes = parseFloat(document.getElementById('addEventDuration').value) || 90;
+    payload.planned_tss = parseInt(document.getElementById('addEventTss').value, 10) || 75;
   } else if (type === 'workout') {
     payload.primary_zone = "Z3 - Tempo";
     payload.planned_duration_minutes = parseFloat(document.getElementById('addEventDuration').value) || 60;

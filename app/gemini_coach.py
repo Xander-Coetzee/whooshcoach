@@ -147,6 +147,9 @@ def get_athlete_context(db: Session, athlete_id: int = 1) -> str:
     ride_log_lines = []
     total_recent_minutes = 0.0
     total_recent_tss = 0
+    indoor_count = 0
+    outdoor_count = 0
+
     if recent_rides:
         for r in recent_rides:
             dur_min = round(r.moving_time / 60) if r.moving_time else 0
@@ -155,19 +158,39 @@ def get_athlete_context(db: Session, athlete_id: int = 1) -> str:
                 total_recent_tss += r.calculated_tss
             power_str = f", Avg Power: {r.average_watts:.0f}W" if r.average_watts else ""
             hr_str = f", Avg HR: {r.average_heartrate:.0f}bpm" if r.average_heartrate else ""
-            dist_str = f", Dist: {r.distance:.1f}km" if r.distance else ""
+            dist_str = f", Dist: {r.distance/1000.0:.1f}km" if (r.distance and r.distance > 100) else (f", Dist: {r.distance:.1f}km" if r.distance else "")
             date_only = r.start_date_local[:10] if r.start_date_local else (r.start_date[:10] if r.start_date else "Recent")
-            ride_log_lines.append(f"- {date_only}: \"{r.name}\" ({dur_min} min{dist_str}, TSS: {r.calculated_tss or 'N/A'}{power_str}{hr_str})")
+            
+            is_outdoor = (r.type == "Ride" or (r.id and "strava" in r.id))
+            if is_outdoor:
+                outdoor_count += 1
+                type_tag = "[Outdoor Strava]"
+            else:
+                indoor_count += 1
+                type_tag = "[Indoor MyWhoosh]" if (r.id and "mw" in r.id) else "[Indoor Virtual]"
+
+            ride_log_lines.append(f"- {date_only} {type_tag}: \"{r.name}\" ({dur_min} min{dist_str}, TSS: {r.calculated_tss or 'N/A'}{power_str}{hr_str})")
     elif recent_events:
         for e in recent_events:
             dur_min = e.actual_duration_minutes or 0.0
             total_recent_minutes += dur_min
             if e.actual_tss:
                 total_recent_tss += e.actual_tss
-            ride_log_lines.append(f"- {e.date}: \"{e.title}\" ({dur_min:.0f} min, TSS: {e.actual_tss or 0})")
+            is_outdoor = (e.event_type == "outdoor_ride" or e.primary_zone == "Outdoor Ride")
+            type_tag = "[Outdoor Strava]" if is_outdoor else "[Indoor Workout]"
+            if is_outdoor:
+                outdoor_count += 1
+            else:
+                indoor_count += 1
+            ride_log_lines.append(f"- {e.date} {type_tag}: \"{e.title}\" ({dur_min:.0f} min, TSS: {e.actual_tss or 0})")
 
     recent_history_block = "\n".join(ride_log_lines) if ride_log_lines else "No recent completed rides logged yet."
-    baseline_stats_line = f"- Recent 14-Day Baseline Load: {len(recent_rides or recent_events)} completed rides ({round(total_recent_minutes/60, 1)} hrs, ~{total_recent_tss} TSS combined)."
+    baseline_stats_line = (
+        f"- Recent 14-Day Baseline Load: {len(recent_rides or recent_events)} completed rides "
+        f"({indoor_count} indoor virtual, {outdoor_count} outdoor Strava, {round(total_recent_minutes/60, 1)} hrs, ~{total_recent_tss} TSS combined).\n"
+        f"- Environment Context: Outdoor rides carry real road resistance, wind, and heat fatigue. "
+        f"Never confuse indoor trainer workouts with outdoor rides. Respect recovery needs following outdoor volume."
+    )
 
     coaching_mode = getattr(profile, "coaching_mode", "autonomous") or "autonomous"
     if coaching_mode == "autonomous" or not profile.target_weekly_tss:
@@ -627,6 +650,9 @@ async def adapt_calendar_after_activity(
     actual_tss = completed_event.actual_tss or 0
     tss_diff = actual_tss - planned_tss
 
+    is_outdoor_act = (activity.type == "Ride" or (activity.id and "strava" in activity.id) or completed_event.event_type == "outdoor_ride")
+    ride_env_desc = "Outdoor Road/Gravel Ride (via Strava)" if is_outdoor_act else "Indoor Virtual Trainer Ride (via MyWhoosh)"
+
     prompt = f"""
 You are an AI cycling coach monitoring an athlete's live training calendar.
 An activity was just completed. Determine if upcoming training days need dynamic adjustments.
@@ -635,6 +661,7 @@ COMPLETED ACTIVITY DETAILS:
 - Date: {completed_event.date}
 - Workout Planned: "{completed_event.title}" ({completed_event.primary_zone}, Planned TSS: {planned_tss})
 - Actual Completed Ride: "{activity.name}"
+- Ride Environment: {ride_env_desc}
 - Actual Duration: {round(activity.moving_time / 60, 1)} min
 - Actual TSS: {actual_tss} TSS (Difference: {tss_diff:+d} TSS)
 - Avg Power: {activity.average_watts or 'N/A'} W, Normalized: {activity.weighted_average_watts or 'N/A'} W
@@ -647,7 +674,8 @@ UPCOMING SCHEDULED SESSIONS (NEXT 7 DAYS):
 ADAPTATION GUIDELINES:
 1. If actual TSS was significantly higher than planned (+30 TSS or hard group ride/race):
    - The immediate next day should be downgraded to an active recovery ride (Z1/Z2 low TSS) or complete rest day.
-2. If actual TSS was lower or workout was skipped:
+2. OUTDOOR RIDE FATIGUE: If the completed session was an outdoor ride, factor in muscular fatigue from road vibration, wind, and climbing. Avoid scheduling hard indoor threshold/VO2Max workouts the immediate next day.
+3. If actual TSS was lower or workout was skipped:
    - Avoid cramming high intensity into consecutive days. Rebalance appropriately.
 3. If actual workout matched plan reasonably (within +/- 15 TSS):
    - Keep schedule as is ("requires_adjustment": false).
