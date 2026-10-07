@@ -151,8 +151,8 @@ def test_gemini_connection(api_key: Optional[str] = None, model: Optional[str] =
         }
 
 
-def get_workout_catalog_sample(db: Session, max_per_zone: int = 20) -> str:
-    """Generates catalog of available MyWhoosh workouts grouped by zone."""
+def get_workout_catalog_sample(db: Session, max_per_zone: int = 35) -> str:
+    """Generates catalog of available MyWhoosh workouts grouped by zone with duration variety."""
     zones = ["Z1 - Recovery", "Z2 - Endurance", "Z3 - Tempo", "Z4 - Threshold", "Z5 - VO2Max", "Z6 - Anaerobic"]
     catalog_lines = []
     
@@ -166,6 +166,80 @@ def get_workout_catalog_sample(db: Session, max_per_zone: int = 20) -> str:
         catalog_lines.append("")
 
     return "\n".join(catalog_lines)
+
+
+def resolve_best_mywhoosh_workout(
+    db: Session,
+    raw_wid: Optional[int] = None,
+    raw_title: Optional[str] = None,
+    primary_zone: Optional[str] = None,
+    target_duration: Optional[float] = None,
+    target_tss: Optional[int] = None,
+    athlete_preferences: Optional[str] = None
+) -> Optional[Workout]:
+    """
+    Deterministically resolves and validates the optimal real MyWhoosh workout from the 847-workout library.
+    1. Direct ID match if valid in database.
+    2. Exact or case-insensitive title match.
+    3. Multi-factor candidate scoring across all 847 workouts (Zone match + Duration proximity + TSS proximity + Preference keywords).
+    """
+    # 1. Direct ID verification
+    if raw_wid:
+        try:
+            wid_int = int(raw_wid)
+            w = db.query(Workout).filter(Workout.id == wid_int).first()
+            if w:
+                return w
+        except (ValueError, TypeError):
+            pass
+
+    # 2. Direct title match
+    if raw_title:
+        clean_title = raw_title.strip()
+        w = db.query(Workout).filter(Workout.title.ilike(clean_title)).first()
+        if w:
+            return w
+
+    # 3. Multi-factor candidate search across all 847 workouts
+    query = db.query(Workout)
+    zone_candidates = []
+    if primary_zone:
+        zone_candidates = query.filter(Workout.primary_zone.ilike(f"%{primary_zone}%")).all()
+        if not zone_candidates and "-" in primary_zone:
+            prefix = primary_zone.split("-")[0].strip()
+            zone_candidates = query.filter(Workout.primary_zone.ilike(f"%{prefix}%")).all()
+
+    if not zone_candidates:
+        zone_candidates = query.all()
+
+    if not zone_candidates:
+        return None
+
+    best_candidate = None
+    best_penalty = float("inf")
+    
+    desired_dur = float(target_duration or 60.0)
+    desired_tss = float(target_tss or 50.0)
+    pref_str = (athlete_preferences or "").lower()
+
+    for cand in zone_candidates:
+        cand_dur = float(cand.duration_minutes or 60.0)
+        cand_tss = float(cand.tss or 50.0)
+        dur_diff = abs(cand_dur - desired_dur)
+        tss_diff = abs(cand_tss - desired_tss)
+        
+        penalty = (dur_diff * 1.5) + (tss_diff * 1.0)
+        
+        # Category bonus for athlete preferences (e.g. sweet spot, micro-intervals, climbs)
+        cand_text = f"{cand.title} {cand.category} {cand.all_categories or ''}".lower()
+        if pref_str and any(word in cand_text for word in ["sweet spot", "sweetspot", "interval", "climb", "sprint"] if word in pref_str):
+            penalty -= 15.0
+
+        if penalty < best_penalty:
+            best_penalty = penalty
+            best_candidate = cand
+
+    return best_candidate
 
 
 # ---------------------------------------------------------------------------
@@ -198,8 +272,54 @@ def create_coach_tools(db: Session, athlete_id: int):
             "tss": w.tss,
             "intensity_factor": w.intensity_factor,
             "description": w.description,
-            "workout_steps": w.workout_steps
+            "workout_steps": w.workout_steps,
+            "url": w.url
         })
+
+    def search_mywhoosh_workouts(
+        primary_zone: str = None,
+        category: str = None,
+        max_duration_minutes: float = None,
+        min_duration_minutes: float = None,
+        target_tss: int = None,
+        keyword: str = None,
+        limit: int = 8
+    ) -> str:
+        """
+        Search the full library of 847 real MyWhoosh workouts to find the best matching session.
+        Matches by zone (e.g. 'Z4 - Threshold', 'Z2 - Endurance', 'Z5 - VO2Max'),
+        category (e.g. 'Sweetspot', 'Threshold', 'VO2max', 'Endurance', 'Testing', 'UAE Team Emirates'),
+        duration range in minutes, or keyword.
+        """
+        query = db.query(Workout)
+        if primary_zone:
+            query = query.filter(Workout.primary_zone.ilike(f"%{primary_zone}%"))
+        if category:
+            query = query.filter(or_(Workout.category.ilike(f"%{category}%"), Workout.all_categories.ilike(f"%{category}%")))
+        if keyword:
+            query = query.filter(or_(Workout.title.ilike(f"%{keyword}%"), Workout.description.ilike(f"%{keyword}%")))
+        if min_duration_minutes:
+            query = query.filter(Workout.duration_minutes >= min_duration_minutes)
+        if max_duration_minutes:
+            query = query.filter(Workout.duration_minutes <= max_duration_minutes)
+        if target_tss:
+            query = query.filter(Workout.tss.between(max(0, target_tss - 20), target_tss + 20))
+        
+        results = query.order_by(Workout.duration_minutes.asc()).limit(limit).all()
+        return json.dumps([
+            {
+                "id": w.id,
+                "title": w.title,
+                "category": w.category,
+                "primary_zone": w.primary_zone,
+                "duration_minutes": w.duration_minutes,
+                "tss": w.tss,
+                "intensity_factor": w.intensity_factor,
+                "description": (w.description[:120] + "...") if (w.description and len(w.description) > 120) else (w.description or ""),
+                "url": w.url
+            }
+            for w in results
+        ])
 
     def get_readiness_and_training_load() -> str:
         """Fetch deterministic CTL (Fitness), ATL (Fatigue), TSB (Form), ACWR, and the Section 11 readiness gate (Go/Modify/Skip)."""
@@ -222,6 +342,7 @@ def create_coach_tools(db: Session, athlete_id: int):
     return [
         get_recent_workouts,
         get_workout_details,
+        search_mywhoosh_workouts,
         get_readiness_and_training_load,
         get_athlete_dossier_info,
         get_long_term_history
@@ -494,14 +615,39 @@ Respond with ONLY valid JSON adhering strictly to:
                     event_status = "rest"
                     coach_notes = item.get("coach_notes", "Recovery day.")
                 else:
-                    event_title = raw_title
-                    workout_id = raw_wid
-                    event_type = "workout"
-                    primary_zone = item.get("primary_zone", "Z2 - Endurance")
-                    planned_duration = float(item.get("planned_duration_minutes", 60.0))
-                    planned_tss = int(item.get("planned_tss", 50))
-                    event_status = "scheduled"
-                    coach_notes = item.get("coach_notes", "")
+                    target_zone = item.get("primary_zone", "Z2 - Endurance")
+                    target_dur = float(item.get("planned_duration_minutes", 60.0))
+                    target_tss_val = int(item.get("planned_tss", 50))
+
+                    # Deterministically resolve best real MyWhoosh workout from 847 library
+                    resolved_workout = resolve_best_mywhoosh_workout(
+                        db=db,
+                        raw_wid=raw_wid,
+                        raw_title=raw_title,
+                        primary_zone=target_zone,
+                        target_duration=target_dur,
+                        target_tss=target_tss_val,
+                        athlete_preferences=dossier.get("training_preferences")
+                    )
+
+                    if resolved_workout:
+                        event_title = resolved_workout.title
+                        workout_id = resolved_workout.id
+                        event_type = "workout"
+                        primary_zone = resolved_workout.primary_zone
+                        planned_duration = resolved_workout.duration_minutes
+                        planned_tss = resolved_workout.tss
+                        event_status = "scheduled"
+                        coach_notes = item.get("coach_notes", "") or f"Category: {resolved_workout.category} | IF: {resolved_workout.intensity_factor}"
+                    else:
+                        event_title = raw_title
+                        workout_id = raw_wid
+                        event_type = "workout"
+                        primary_zone = target_zone
+                        planned_duration = target_dur
+                        planned_tss = target_tss_val
+                        event_status = "scheduled"
+                        coach_notes = item.get("coach_notes", "")
 
             event = CalendarEvent(
                 athlete_id=profile.id,
@@ -700,10 +846,31 @@ Respond with ONLY valid JSON adhering strictly to:
                     CalendarEvent.id == adj["event_id"]
                 ).first()
                 if ev and ev.status == "scheduled" and not ev.is_manual and ev.event_type not in ["race", "custom", "rest"]:
-                    ev.title = adj.get("new_title", ev.title)
-                    ev.primary_zone = adj.get("new_zone", ev.primary_zone)
-                    ev.planned_tss = adj.get("new_tss", ev.planned_tss)
-                    ev.planned_duration_minutes = adj.get("new_duration_minutes", ev.planned_duration_minutes)
+                    new_zone = adj.get("new_zone", ev.primary_zone)
+                    new_dur = float(adj.get("new_duration_minutes", ev.planned_duration_minutes))
+                    new_tss_val = int(adj.get("new_tss", ev.planned_tss))
+
+                    # Resolve real MyWhoosh workout for adapted session
+                    resolved_adj = resolve_best_mywhoosh_workout(
+                        db=db,
+                        raw_title=adj.get("new_title"),
+                        primary_zone=new_zone,
+                        target_duration=new_dur,
+                        target_tss=new_tss_val
+                    )
+
+                    if resolved_adj:
+                        ev.title = resolved_adj.title
+                        ev.workout_id = resolved_adj.id
+                        ev.primary_zone = resolved_adj.primary_zone
+                        ev.planned_duration_minutes = resolved_adj.duration_minutes
+                        ev.planned_tss = resolved_adj.tss
+                    else:
+                        ev.title = adj.get("new_title", ev.title)
+                        ev.primary_zone = new_zone
+                        ev.planned_tss = new_tss_val
+                        ev.planned_duration_minutes = new_dur
+
                     ev.status = adj.get("status", "modified")
                     ev.coach_notes = adj.get("coach_reason", "")
         
