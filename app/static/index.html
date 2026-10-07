@@ -94,6 +94,12 @@
           <span>AI Plan</span>
         </button>
 
+        <!-- Athlete Dossier & Protocol Button (Section 11) -->
+        <button onclick="openDossierModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition" title="Athlete Dossier & Rules">
+          <i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i>
+          <span class="hidden sm:inline">Dossier</span>
+        </button>
+
         <!-- System Logs Button -->
         <button onclick="openLogsModal()" class="p-2 rounded-lg text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition border border-slate-700" title="System Logs">
           <i data-lucide="terminal" class="w-4 h-4"></i>
@@ -136,13 +142,49 @@
       </div>
     </div>
 
-    <!-- TOP STATS & TODAY HIGHLIGHT BANNER -->
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- TOP STATS & TODAY HIGHLIGHT BANNER (SECTION 11 READINESS + LOAD + SESSION) -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
       
-      <!-- Weekly Load Card -->
+      <!-- 1. Physiological Readiness & Protocol Gate Card (Section 11 Standard) -->
+      <div id="readinessCard" class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Readiness & Form</span>
+            <div id="readinessBadge" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span id="readinessDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span id="readinessGateText">GO</span>
+              <span id="readinessScoreText" class="text-[10px] opacity-75 ml-0.5">(90/100)</span>
+            </div>
+          </div>
+          <p id="readinessReason" class="text-xs text-slate-300 leading-snug line-clamp-2 mt-1">Physiological markers indicate optimal training readiness. Green light for quality work.</p>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800/80 mt-2">
+          <div class="grid grid-cols-4 gap-1 text-center">
+            <div class="bg-slate-950/60 rounded p-1 border border-slate-800/60" title="Chronic Training Load (Fitness - 42d constant)">
+              <div class="text-[10px] text-slate-400 font-semibold uppercase">CTL</div>
+              <div id="metricCtl" class="text-xs font-black text-white">--</div>
+            </div>
+            <div class="bg-slate-950/60 rounded p-1 border border-slate-800/60" title="Acute Training Load (Fatigue - 7d constant)">
+              <div class="text-[10px] text-slate-400 font-semibold uppercase">ATL</div>
+              <div id="metricAtl" class="text-xs font-black text-amber-300">--</div>
+            </div>
+            <div class="bg-slate-950/60 rounded p-1 border border-slate-800/60" title="Training Stress Balance (Form = CTL - ATL)">
+              <div class="text-[10px] text-slate-400 font-semibold uppercase">TSB</div>
+              <div id="metricTsb" class="text-xs font-black text-emerald-300">--</div>
+            </div>
+            <div class="bg-slate-950/60 rounded p-1 border border-slate-800/60" title="Acute:Chronic Workload Ratio (Start of Day)">
+              <div class="text-[10px] text-slate-400 font-semibold uppercase">ACWR</div>
+              <div id="metricAcwr" class="text-xs font-black text-sky-300">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Weekly Training Stress Card -->
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between shadow-sm">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Weekly Training Stress (TSS)</span>
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Weekly Load (TSS)</span>
           <span id="weekTssBadge" class="text-xs font-bold px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">0% Target</span>
         </div>
         <div class="flex items-baseline gap-2 mb-2">
@@ -159,8 +201,8 @@
         </div>
       </div>
 
-      <!-- Today's Workout Card -->
-      <div id="todayCard" class="lg:col-span-2 bg-gradient-to-r from-slate-900 to-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden">
+      <!-- 3. Today's Workout Card -->
+      <div id="todayCard" class="bg-gradient-to-r from-slate-900 to-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden">
         <div class="flex items-center justify-between gap-2 mb-1.5">
           <div class="flex items-center gap-2">
             <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">Today's Session</span>
@@ -170,18 +212,18 @@
         </div>
 
         <div class="my-1">
-          <h2 id="todayTitle" class="text-lg font-bold text-white tracking-tight">No workout scheduled for today</h2>
+          <h2 id="todayTitle" class="text-base font-bold text-white tracking-tight truncate">No workout scheduled today</h2>
           <p id="todayDescription" class="text-xs text-slate-400 line-clamp-2 mt-1">Enjoy a restful day or choose a session from the library.</p>
         </div>
 
         <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 mt-2 text-xs">
-          <div class="flex items-center gap-4 text-slate-300">
+          <div class="flex items-center gap-3 text-slate-300">
             <span><i data-lucide="clock" class="w-3.5 h-3.5 inline mr-1 text-slate-400"></i><strong id="todayDuration">--</strong></span>
             <span><i data-lucide="activity" class="w-3.5 h-3.5 inline mr-1 text-slate-400"></i><strong id="todayTss">--</strong> TSS</span>
           </div>
           <div id="todayActions" class="flex items-center gap-2">
-            <button id="btnViewToday" onclick="viewTodayDetails()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium transition border border-slate-700">View Workout</button>
-            <a id="btnTodayMyWhoosh" href="#" target="_blank" class="hidden px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded font-medium transition">MyWhoosh Link</a>
+            <button id="btnViewToday" onclick="viewTodayDetails()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium transition border border-slate-700">Details</button>
+            <a id="btnTodayMyWhoosh" href="#" target="_blank" class="hidden px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded font-medium transition">MyWhoosh</a>
           </div>
         </div>
       </div>
@@ -556,6 +598,61 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- MODAL: ATHLETE DOSSIER & PROTOCOL RULES (SECTION 11) -->
+  <div id="dossierModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="shield" class="w-5 h-5 text-emerald-400"></i>
+          <div>
+            <h3 class="font-bold text-base text-white">Athlete Dossier & Rules Vault</h3>
+            <p class="text-[11px] text-slate-400">Section 11 Protocol Stable Context & Mandatory Directives</p>
+          </div>
+        </div>
+        <button onclick="closeDossierModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+        <div>
+          <label class="block font-bold text-slate-200 mb-1">Long-Term Training Goals</label>
+          <textarea id="dossierGoals" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-sky-500" placeholder="e.g. Build aerobic base, raise sustainable FTP, target 100km Gran Fondo."></textarea>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block font-bold text-slate-200">Mandatory Schedule Constraints (Forbidden Days)</label>
+            <span class="text-[10px] text-amber-400 font-semibold">Strictly Enforced in Code</span>
+          </div>
+          <textarea id="dossierConstraints" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-sky-500" placeholder="e.g. Strictly NO workouts on Saturday and Sunday. Available on Tuesday and Thursday."></textarea>
+          <p class="text-[10px] text-slate-400 mt-1">Days specified here will NEVER have workouts scheduled on them.</p>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-200 mb-1">Health & Injury Notes</label>
+          <textarea id="dossierInjury" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-sky-500" placeholder="e.g. None currently active / Recovering from knee strain."></textarea>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-200 mb-1">Equipment & Platform Setup</label>
+          <textarea id="dossierEquipment" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-sky-500" placeholder="e.g. Smart trainer with ERG mode (indoor) and road/gravel bike with power meter (outdoor)."></textarea>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-200 mb-1">Training Preferences</label>
+          <textarea id="dossierPreferences" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-sky-500" placeholder="e.g. Prefers progressive sweet spot and VO2max micro-intervals over steady state 20m threshold."></textarea>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-end gap-2">
+        <button onclick="closeDossierModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition text-xs">Cancel</button>
+        <button onclick="saveDossier()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition text-xs flex items-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Save Dossier</span>
+        </button>
+      </div>
     </div>
   </div>
 

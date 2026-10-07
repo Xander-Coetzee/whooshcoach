@@ -131,6 +131,14 @@ def deploy():
         settings_out = stdout.read().decode().strip()
         print(f"Settings API query response: {settings_out}")
 
+        stdin, stdout, stderr = client.exec_command("curl -s http://localhost:8555/api/athlete/1/readiness")
+        readiness_out = stdout.read().decode().strip()
+        print(f"Readiness API query response: {readiness_out}")
+
+        stdin, stdout, stderr = client.exec_command("curl -s http://localhost:8555/api/athlete/1/dossier")
+        dossier_out = stdout.read().decode().strip()
+        print(f"Dossier API query response: {dossier_out[:120]}...")
+
         stdin, stdout, stderr = client.exec_command("curl -s http://localhost:8555/api/races")
         races_out = stdout.read().decode().strip()
         print(f"Races API query response: {races_out}")

@@ -35,8 +35,12 @@ root_logger.addHandler(mem_handler)
 logger = logging.getLogger("whooshcoach")
 
 from app.database import (
-    init_db, get_db, AthleteProfile, Workout, CalendarEvent, RideActivity, CoachLog
+    init_db, get_db, AthleteProfile, AthleteDossier, Workout, CalendarEvent, RideActivity, CoachLog
 )
+from app.context_engine import (
+    get_athlete_dossier, build_latest_state, build_history_state
+)
+from app.physiology import calculate_power_zones, calculate_hr_zones
 from app.gemini_coach import (
     generate_training_plan, adapt_calendar_after_activity, chat_with_coach, test_gemini_connection
 )
@@ -98,6 +102,14 @@ class AthleteCreate(BaseModel):
     coaching_mode: Optional[str] = "autonomous"
     primary_goal: Optional[str] = "Cardio Fitness & Group Rides"
     available_days: Optional[str] = "Monday,Wednesday,Friday,Saturday"
+
+class DossierUpdate(BaseModel):
+    long_term_goals: Optional[str] = None
+    schedule_constraints: Optional[str] = None
+    injury_and_health_notes: Optional[str] = None
+    equipment_notes: Optional[str] = None
+    training_preferences: Optional[str] = None
+    dossier_markdown: Optional[str] = None
 
 class PlanRequest(BaseModel):
     athlete_id: Optional[int] = 1
@@ -240,6 +252,56 @@ def get_athlete(athlete_id: int, db: Session = Depends(get_db)):
         "is_zwift_connected": bool(a.zwift_token or (a.zwift_username and a.zwift_password)),
         "last_zwift_sync": a.last_zwift_sync
     }
+
+# ----------------- SECTION 11 DOSSIER & PHYSIOLOGY API -----------------
+
+@app.get("/api/athlete/{athlete_id}/dossier")
+def get_dossier_endpoint(athlete_id: int, db: Session = Depends(get_db)):
+    """Fetch Tier-1 Stable Athlete Dossier (Section 11 standard)."""
+    return get_athlete_dossier(db, athlete_id=athlete_id)
+
+@app.put("/api/athlete/{athlete_id}/dossier")
+def update_dossier_endpoint(athlete_id: int, dossier_in: DossierUpdate, db: Session = Depends(get_db)):
+    """Update Tier-1 Stable Athlete Dossier (rules, schedule constraints, health)."""
+    dossier = db.query(AthleteDossier).filter(AthleteDossier.athlete_id == athlete_id).first()
+    if not dossier:
+        dossier = AthleteDossier(athlete_id=athlete_id)
+        db.add(dossier)
+    if dossier_in.long_term_goals is not None:
+        dossier.long_term_goals = dossier_in.long_term_goals
+    if dossier_in.schedule_constraints is not None:
+        dossier.schedule_constraints = dossier_in.schedule_constraints
+    if dossier_in.injury_and_health_notes is not None:
+        dossier.injury_and_health_notes = dossier_in.injury_and_health_notes
+    if dossier_in.equipment_notes is not None:
+        dossier.equipment_notes = dossier_in.equipment_notes
+    if dossier_in.training_preferences is not None:
+        dossier.training_preferences = dossier_in.training_preferences
+    if dossier_in.dossier_markdown is not None:
+        dossier.dossier_markdown = dossier_in.dossier_markdown
+    db.commit()
+    return get_athlete_dossier(db, athlete_id=athlete_id)
+
+@app.get("/api/athlete/{athlete_id}/readiness")
+def get_readiness_endpoint(athlete_id: int, db: Session = Depends(get_db)):
+    """Fetch deterministic Section 11 readiness gate (Go / Modify / Skip), CTL, ATL, TSB, and ACWR."""
+    state = build_latest_state(db, athlete_id=athlete_id)
+    return {
+        "athlete_id": athlete_id,
+        "readiness": state.get("readiness_decision"),
+        "training_load": state.get("training_load"),
+        "athlete_summary": state.get("athlete_summary")
+    }
+
+@app.get("/api/athlete/{athlete_id}/context/latest")
+def get_latest_context_endpoint(athlete_id: int, db: Session = Depends(get_db)):
+    """Fetch Tier-2 Operational State (latest.json)."""
+    return build_latest_state(db, athlete_id=athlete_id)
+
+@app.get("/api/athlete/{athlete_id}/context/history")
+def get_history_context_endpoint(athlete_id: int, days: int = Query(90), db: Session = Depends(get_db)):
+    """Fetch Tier-3 Long-Term Memory (history.json)."""
+    return build_history_state(db, athlete_id=athlete_id, days=days)
 
 # ----------------- CALENDAR API -----------------
 

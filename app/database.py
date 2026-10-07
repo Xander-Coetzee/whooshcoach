@@ -144,6 +144,24 @@ class CoachLog(Base):
     message = Column(Text)
     context_type = Column(String(50), default="chat") # chat, adaptation, plan_generation
 
+class AthleteDossier(Base):
+    """
+    Tier-1 Stable Context (Section 11 standard).
+    Holds private, slow-moving athlete truths, strict schedule constraints,
+    injury history, equipment, and training preferences.
+    """
+    __tablename__ = "athlete_dossier"
+
+    id = Column(Integer, primary_key=True, index=True)
+    athlete_id = Column(Integer, ForeignKey("athlete_profile.id"), unique=True, index=True)
+    long_term_goals = Column(Text, default="Build aerobic base, raise sustainable FTP, and prepare for target events.")
+    schedule_constraints = Column(Text, default="Strictly NO workouts on Saturday and Sunday. Available training days: Tuesday and Thursday.")
+    injury_and_health_notes = Column(Text, default="None currently active.")
+    equipment_notes = Column(Text, default="Indoor: Smart trainer with ERG mode (MyWhoosh/Zwift). Outdoor: Road/gravel bike with power meter (Strava).")
+    training_preferences = Column(Text, default="Prefers progressive sweet spot and VO2max micro-bursts over long steady state tempo.")
+    dossier_markdown = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
 def get_db():
     db = SessionLocal()
     try:
@@ -284,6 +302,22 @@ def init_db():
             )
             db.add(profile2)
             db.commit()
+
+        # Seed default AthleteDossier records if missing
+        for p in db.query(AthleteProfile).all():
+            dossier = db.query(AthleteDossier).filter(AthleteDossier.athlete_id == p.id).first()
+            if not dossier:
+                sched = "Strictly NO workouts on Saturday and Sunday. Available training days: Tuesday and Thursday." if p.id == 1 else f"Available training days: {p.available_days}."
+                dossier = AthleteDossier(
+                    athlete_id=p.id,
+                    long_term_goals=f"Build aerobic engine, raise FTP, and achieve peak fitness for {p.name}.",
+                    schedule_constraints=sched,
+                    injury_and_health_notes="None currently active.",
+                    equipment_notes=f"Primary platform: {p.platform.title()}. Power meter & heart rate monitor calibrated.",
+                    training_preferences="Progressive overload with polarized 80/20 distribution."
+                )
+                db.add(dossier)
+        db.commit()
 
         # Seed MyWhoosh workouts if empty
         count = db.query(Workout).count()

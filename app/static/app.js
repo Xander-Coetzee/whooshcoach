@@ -95,8 +95,60 @@ async function loadStats() {
       document.getElementById('todayTss').innerText = "0";
       document.getElementById('btnTodayMyWhoosh').classList.add('hidden');
     }
+
+    // Load Section 11 Physiological Readiness & Training Load
+    await loadReadiness();
   } catch (e) {
     console.error("Failed to load dashboard stats:", e);
+  }
+}
+
+async function loadReadiness() {
+  try {
+    const res = await fetch(`/api/athlete/${currentAthleteId}/readiness`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const rd = data.readiness || {};
+    const tl = data.training_load || {};
+
+    const gate = (rd.decision || 'GO').toUpperCase();
+    const score = rd.score || 90;
+    
+    const gateEl = document.getElementById('readinessGateText');
+    const scoreEl = document.getElementById('readinessScoreText');
+    const reasonEl = document.getElementById('readinessReason');
+    if (gateEl) gateEl.innerText = gate;
+    if (scoreEl) scoreEl.innerText = `(${score}/100)`;
+    if (reasonEl) reasonEl.innerText = rd.reason || 'Physiological markers optimal for training.';
+
+    const ctlEl = document.getElementById('metricCtl');
+    const atlEl = document.getElementById('metricAtl');
+    const tsbEl = document.getElementById('metricTsb');
+    const acwrEl = document.getElementById('metricAcwr');
+    if (ctlEl) ctlEl.innerText = tl.fitness_ctl != null ? tl.fitness_ctl : '--';
+    if (atlEl) atlEl.innerText = tl.fatigue_atl != null ? tl.fatigue_atl : '--';
+    if (tsbEl) tsbEl.innerText = tl.form_tsb != null ? (tl.form_tsb > 0 ? `+${tl.form_tsb}` : tl.form_tsb) : '--';
+    if (acwrEl) acwrEl.innerText = tl.acwr_start_of_day != null ? Number(tl.acwr_start_of_day).toFixed(2) : '--';
+
+    const badge = document.getElementById('readinessBadge');
+    const dot = document.getElementById('readinessDot');
+    if (badge && dot) {
+      badge.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black';
+      dot.className = 'w-2 h-2 rounded-full animate-pulse';
+
+      if (gate === 'SKIP') {
+        badge.classList.add('bg-rose-500/10', 'text-rose-400', 'border', 'border-rose-500/20');
+        dot.classList.add('bg-rose-400');
+      } else if (gate === 'MODIFY') {
+        badge.classList.add('bg-amber-500/10', 'text-amber-400', 'border', 'border-amber-500/20');
+        dot.classList.add('bg-amber-400');
+      } else {
+        badge.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border', 'border-emerald-500/20');
+        dot.classList.add('bg-emerald-400');
+      }
+    }
+  } catch (err) {
+    console.warn("Could not load readiness:", err);
   }
 }
 
@@ -782,6 +834,72 @@ async function scheduleWorkoutOnCalendar(workout) {
     }
   } catch (e) {
     showToast('Failed to schedule workout', 'error');
+  }
+}
+
+// ----------------- ATHLETE DOSSIER MODAL (SECTION 11) -----------------
+
+async function openDossierModal() {
+  try {
+    const res = await fetch(`/api/athlete/${currentAthleteId}/dossier`);
+    if (!res.ok) return;
+    const dossier = await res.json();
+    const gEl = document.getElementById('dossierGoals');
+    const cEl = document.getElementById('dossierConstraints');
+    const iEl = document.getElementById('dossierInjury');
+    const eEl = document.getElementById('dossierEquipment');
+    const pEl = document.getElementById('dossierPreferences');
+
+    if (gEl) gEl.value = dossier.long_term_goals || '';
+    if (cEl) cEl.value = dossier.schedule_constraints || '';
+    if (iEl) iEl.value = dossier.injury_and_health_notes || '';
+    if (eEl) eEl.value = dossier.equipment_notes || '';
+    if (pEl) pEl.value = dossier.training_preferences || '';
+
+    const modal = document.getElementById('dossierModal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+    if (window.lucide) lucide.createIcons();
+  } catch (e) {
+    console.error("Failed to load dossier:", e);
+  }
+}
+
+function closeDossierModal() {
+  const modal = document.getElementById('dossierModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+async function saveDossier() {
+  const payload = {
+    long_term_goals: document.getElementById('dossierGoals')?.value.trim() || '',
+    schedule_constraints: document.getElementById('dossierConstraints')?.value.trim() || '',
+    injury_and_health_notes: document.getElementById('dossierInjury')?.value.trim() || '',
+    equipment_notes: document.getElementById('dossierEquipment')?.value.trim() || '',
+    training_preferences: document.getElementById('dossierPreferences')?.value.trim() || ''
+  };
+
+  try {
+    const res = await fetch(`/api/athlete/${currentAthleteId}/dossier`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      closeDossierModal();
+      showToast('Dossier updated successfully!', 'success');
+      await loadReadiness();
+    } else {
+      showToast('Failed to save dossier', 'error');
+    }
+  } catch (e) {
+    console.error("Error saving dossier:", e);
+    showToast('Network error saving dossier', 'error');
   }
 }
 
