@@ -5,20 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WhooshCoach | AI Cycling Coach & Calendar</title>
   
-  <!-- Tailwind CSS -->
+  <!-- Plus Jakarta Sans Font (Cashew Signature Typography) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS with Cashew Theme Tokens -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+          },
           colors: {
-            brand: {
-              50: '#f0f9ff',
-              500: '#0ea5e9',
-              600: '#0284c7',
-              700: '#0369a1',
+            cashew: {
+              bg: '#0F1115',
+              surface: '#1A1E24',
+              surfaceHigh: '#222730',
+              surfaceHighest: '#2B313D',
+              primary: '#7DB6CC',
+              primaryDark: '#1B447A',
+              green: '#62CA77',
+              red: '#DA7272',
+              orange: '#DA9C72',
+              yellow: '#FFD723',
+              purple: '#C084FC',
+              blue: '#8395FF'
             }
+          },
+          borderRadius: {
+            '2xl': '18px',
+            '3xl': '26px',
+            '4xl': '32px'
           }
         }
       }
@@ -34,31 +55,31 @@
   <!-- Custom CSS -->
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+<body class="bg-[#0F1115] text-[#F3F4F6] font-sans min-h-screen flex flex-col selection:bg-[#7DB6CC]/30">
 
-  <!-- TOP NAVIGATION -->
-  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 px-4 py-3">
+  <!-- TOP NAVIGATION (CASHEW FROSTED APP BAR) -->
+  <header class="bg-[#13161C]/85 backdrop-blur-xl border-b border-white/[0.06] sticky top-0 z-30 px-4 py-3">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
       
       <!-- Brand & Title -->
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-sky-500/20">
-          <i data-lucide="zap" class="w-6 h-6 text-white"></i>
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#1B447A] to-[#7DB6CC] flex items-center justify-center shadow-lg shadow-[#7DB6CC]/15">
+          <i data-lucide="zap" class="w-5 h-5 text-white"></i>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="font-bold text-lg text-white tracking-tight">WhooshCoach</h1>
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">Multi-Athlete AI</span>
+            <h1 class="font-extrabold text-lg text-white tracking-tight">WhooshCoach</h1>
+            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#7DB6CC]/15 text-[#7DB6CC] border border-[#7DB6CC]/25">Multi-Athlete AI</span>
           </div>
-          <p class="text-xs text-slate-400">MyWhoosh + Zwift + Race Periodization + Gemini AI</p>
+          <p class="text-[11px] text-slate-400 font-medium">MyWhoosh + Zwift + Race Periodization + Gemini AI</p>
         </div>
       </div>
 
       <!-- Action Buttons & Status -->
       <div class="flex items-center flex-wrap gap-2.5">
         <!-- Athlete Profile Switcher -->
-        <div class="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs shadow-inner">
-          <i data-lucide="user" class="w-3.5 h-3.5 text-sky-400"></i>
+        <div class="flex items-center gap-1.5 bg-[#1A1E24] border border-white/[0.08] rounded-full px-3 py-1.5 text-xs shadow-inner">
+          <i data-lucide="user" class="w-3.5 h-3.5 text-[#7DB6CC]"></i>
           <select id="athleteSelector" onchange="switchAthlete(this.value)" class="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer pr-1">
             <option value="1">Xander (MyWhoosh)</option>
             <option value="2">Mom (Zwift)</option>
@@ -69,44 +90,44 @@
         </div>
 
         <!-- Platform Status Badge -->
-        <div id="platformStatusBadge" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300">
-          <span id="platformStatusDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <div id="platformStatusBadge" class="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#1A1E24] border border-white/[0.08] text-slate-300">
+          <span id="platformStatusDot" class="w-2 h-2 rounded-full bg-[#62CA77]"></span>
           <span id="platformStatusText">MyWhoosh: Ready</span>
         </div>
 
         <!-- Sync Button (Dynamic: MyWhoosh or Zwift) -->
-        <button id="btnSyncPlatform" onclick="triggerPlatformSync()" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition shadow-sm hover:shadow-emerald-500/20">
+        <button id="btnSyncPlatform" onclick="triggerPlatformSync()" class="cashew-pill-btn flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-[#59A849] to-[#62CA77] hover:from-[#4E973F] hover:to-[#55B56A] text-slate-950 transition shadow-sm shadow-[#62CA77]/20">
           <span id="syncPlatformIconWrap" class="flex items-center justify-center">
-            <i id="syncPlatformIcon" data-lucide="refresh-cw" class="w-4 h-4"></i>
+            <i id="syncPlatformIcon" data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
           </span>
           <span id="syncPlatformText">Sync MyWhoosh</span>
         </button>
 
         <!-- Add Race / Target Event Button -->
-        <button onclick="openAddEventModal('', 'race')" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 transition shadow-sm hover:shadow-amber-500/20">
-          <i data-lucide="trophy" class="w-4 h-4"></i>
+        <button onclick="openAddEventModal('', 'race')" class="cashew-pill-btn flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-[#FFD723] to-[#DA9C72] hover:brightness-105 text-slate-950 transition shadow-sm shadow-[#FFD723]/20">
+          <i data-lucide="trophy" class="w-3.5 h-3.5"></i>
           <span>+ Add Race</span>
         </button>
 
         <!-- Generate Plan Button -->
-        <button onclick="openPlanModal()" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white transition shadow-sm hover:shadow-sky-500/20">
-          <i data-lucide="sparkles" class="w-4 h-4"></i>
+        <button onclick="openPlanModal()" class="cashew-pill-btn flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-[#7DB6CC] to-[#8395FF] hover:brightness-105 text-slate-950 transition shadow-sm shadow-[#7DB6CC]/20">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
           <span>AI Plan</span>
         </button>
 
         <!-- Athlete Dossier & Protocol Button (Section 11) -->
-        <button onclick="openDossierModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition" title="Athlete Dossier & Rules">
-          <i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i>
+        <button onclick="openDossierModal()" class="cashew-pill-btn flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold bg-[#1A1E24] hover:bg-[#222730] text-slate-200 border border-white/[0.08] transition" title="Athlete Dossier & Rules">
+          <i data-lucide="shield" class="w-3.5 h-3.5 text-[#62CA77]"></i>
           <span class="hidden sm:inline">Dossier</span>
         </button>
 
         <!-- System Logs Button -->
-        <button onclick="openLogsModal()" class="p-2 rounded-lg text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition border border-slate-700" title="System Logs">
+        <button onclick="openLogsModal()" class="cashew-pill-btn w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:text-white bg-[#1A1E24] hover:bg-[#222730] transition border border-white/[0.08]" title="System Logs">
           <i data-lucide="terminal" class="w-4 h-4"></i>
         </button>
 
         <!-- Settings Button -->
-        <button onclick="openSettingsModal()" class="p-2 rounded-lg text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition border border-slate-700" title="Settings">
+        <button onclick="openSettingsModal()" class="cashew-pill-btn w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:text-white bg-[#1A1E24] hover:bg-[#222730] transition border border-white/[0.08]" title="Settings">
           <i data-lucide="settings" class="w-4 h-4"></i>
         </button>
       </div>
@@ -118,25 +139,25 @@
   <main class="max-w-7xl mx-auto w-full p-4 flex-1 flex flex-col gap-5">
     
     <!-- ACTIVE PLAN CONFIRMATION BANNER -->
-    <div id="activePlanBanner" class="hidden bg-gradient-to-r from-indigo-950/70 via-slate-900 to-slate-900 border border-indigo-500/30 rounded-xl p-3.5 flex-wrap items-center justify-between gap-3 shadow-md">
+    <div id="activePlanBanner" class="hidden bg-gradient-to-r from-[#1B447A]/30 via-[#1A1E24] to-[#1A1E24] border border-[#7DB6CC]/25 rounded-[26px] p-4 flex-wrap items-center justify-between gap-3 shadow-md">
       <div class="flex items-center gap-3">
-        <div class="p-2 rounded-lg bg-indigo-500/20 text-indigo-400 shrink-0">
+        <div class="w-10 h-10 rounded-2xl bg-[#7DB6CC]/15 text-[#7DB6CC] flex items-center justify-center shrink-0 border border-[#7DB6CC]/20">
           <i data-lucide="calendar-check" class="w-5 h-5"></i>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <span class="font-bold text-sm text-white" id="bannerPlanTitle">AI Training Plan Active</span>
-            <span id="bannerPlanTss" class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"></span>
+            <span class="font-extrabold text-sm text-white" id="bannerPlanTitle">AI Training Plan Active</span>
+            <span id="bannerPlanTss" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#7DB6CC]/20 text-[#7DB6CC] border border-[#7DB6CC]/30"></span>
           </div>
           <p id="bannerPlanDates" class="text-xs text-slate-300 mt-0.5"></p>
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <button onclick="reopenLastPlanSummary()" class="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+        <button onclick="reopenLastPlanSummary()" class="cashew-pill-btn px-4 py-1.5 bg-[#7DB6CC]/20 hover:bg-[#7DB6CC]/30 text-[#7DB6CC] border border-[#7DB6CC]/30 rounded-full text-xs font-bold transition flex items-center gap-1.5">
           <i data-lucide="eye" class="w-3.5 h-3.5"></i>
           <span>Review Plan Details</span>
         </button>
-        <button onclick="dismissPlanBanner()" class="text-slate-400 hover:text-white p-1">
+        <button onclick="dismissPlanBanner()" class="text-slate-400 hover:text-white p-1 rounded-full">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
@@ -146,54 +167,54 @@
     <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
       
       <!-- 1. Physiological Readiness & Protocol Gate Card (Section 11 Standard) -->
-      <div id="readinessCard" class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden">
+      <div id="readinessCard" class="bg-[#1A1E24] border border-white/[0.06] rounded-[26px] p-5 flex flex-col justify-between shadow-sm hover:border-white/[0.12] transition-all relative overflow-hidden">
         <div>
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Readiness & Form</span>
-            <div id="readinessBadge" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <span id="readinessDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Readiness & Form</span>
+            <div id="readinessBadge" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-[#62CA77]/15 text-[#62CA77] border border-[#62CA77]/25">
+              <span id="readinessDot" class="w-2 h-2 rounded-full bg-[#62CA77] animate-pulse"></span>
               <span id="readinessGateText">GO</span>
               <span id="readinessScoreText" class="text-[10px] opacity-75 ml-0.5">(90/100)</span>
             </div>
           </div>
-          <p id="readinessReason" class="text-xs text-slate-300 leading-snug line-clamp-2 mt-1">Physiological markers indicate optimal training readiness. Green light for quality work.</p>
+          <p id="readinessReason" class="text-xs text-slate-300 leading-relaxed line-clamp-2 mt-1">Physiological markers indicate optimal training readiness. Green light for quality work.</p>
         </div>
 
-        <div class="pt-3 border-t border-slate-800/80 mt-2">
-          <div class="grid grid-cols-4 gap-1 text-center">
-            <div class="bg-slate-950/60 rounded p-1 border border-slate-800/60" title="Chronic Training Load (Fitness - 42d constant)">
-              <div class="text-[10px] text-slate-400 font-semibold uppercase">CTL</div>
-              <div id="metricCtl" class="text-xs font-black text-white">--</div>
+        <div class="pt-3 border-t border-white/[0.06] mt-3">
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div class="bg-[#111418] rounded-2xl p-2 border border-white/[0.05]" title="Chronic Training Load (Fitness - 42d constant)">
+              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">CTL</div>
+              <div id="metricCtl" class="text-xs font-black text-white mt-0.5">--</div>
             </div>
-            <div class="bg-slate-950/60 rounded p-1 border border-slate-800/60" title="Acute Training Load (Fatigue - 7d constant)">
-              <div class="text-[10px] text-slate-400 font-semibold uppercase">ATL</div>
-              <div id="metricAtl" class="text-xs font-black text-amber-300">--</div>
+            <div class="bg-[#111418] rounded-2xl p-2 border border-white/[0.05]" title="Acute Training Load (Fatigue - 7d constant)">
+              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ATL</div>
+              <div id="metricAtl" class="text-xs font-black text-[#DA9C72] mt-0.5">--</div>
             </div>
-            <div class="bg-slate-950/60 rounded p-1 border border-slate-800/60" title="Training Stress Balance (Form = CTL - ATL)">
-              <div class="text-[10px] text-slate-400 font-semibold uppercase">TSB</div>
-              <div id="metricTsb" class="text-xs font-black text-emerald-300">--</div>
+            <div class="bg-[#111418] rounded-2xl p-2 border border-white/[0.05]" title="Training Stress Balance (Form = CTL - ATL)">
+              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">TSB</div>
+              <div id="metricTsb" class="text-xs font-black text-[#62CA77] mt-0.5">--</div>
             </div>
-            <div class="bg-slate-950/60 rounded p-1 border border-slate-800/60" title="Acute:Chronic Workload Ratio (Start of Day)">
-              <div class="text-[10px] text-slate-400 font-semibold uppercase">ACWR</div>
-              <div id="metricAcwr" class="text-xs font-black text-sky-300">--</div>
+            <div class="bg-[#111418] rounded-2xl p-2 border border-white/[0.05]" title="Acute:Chronic Workload Ratio (Start of Day)">
+              <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">ACWR</div>
+              <div id="metricAcwr" class="text-xs font-black text-[#7DB6CC] mt-0.5">--</div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- 2. Weekly Training Stress Card -->
-      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between shadow-sm">
+      <div class="bg-[#1A1E24] border border-white/[0.06] rounded-[26px] p-5 flex flex-col justify-between shadow-sm hover:border-white/[0.12] transition-all">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Weekly Load (TSS)</span>
-          <span id="weekTssBadge" class="text-xs font-bold px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">0% Target</span>
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Weekly Load (TSS)</span>
+          <span id="weekTssBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-[#7DB6CC]/15 text-[#7DB6CC] border border-[#7DB6CC]/25">0% Target</span>
         </div>
         <div class="flex items-baseline gap-2 mb-2">
           <span id="completedTss" class="text-2xl font-black text-white">0</span>
           <span class="text-sm text-slate-400 font-medium">/ <span id="plannedTss">0</span> Planned TSS</span>
         </div>
-        <!-- Progress bar -->
-        <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden mb-2">
-          <div id="tssProgressBar" class="bg-gradient-to-r from-sky-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+        <!-- Cashew rounded progress bar -->
+        <div class="w-full bg-[#111418] rounded-full h-3 p-0.5 border border-white/[0.05] overflow-hidden mb-2">
+          <div id="tssProgressBar" class="bg-gradient-to-r from-[#7DB6CC] to-[#62CA77] h-full rounded-full transition-all duration-500" style="width: 0%"></div>
         </div>
         <div class="flex justify-between text-xs text-slate-400">
           <span><strong id="completedHours" class="text-slate-200">0.0</strong> hrs completed</span>
@@ -202,28 +223,28 @@
       </div>
 
       <!-- 3. Today's Workout Card -->
-      <div id="todayCard" class="bg-gradient-to-r from-slate-900 to-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between shadow-sm relative overflow-hidden">
+      <div id="todayCard" class="bg-gradient-to-br from-[#1A1E24] to-[#222730] border border-white/[0.06] rounded-[26px] p-5 flex flex-col justify-between shadow-sm hover:border-white/[0.12] transition-all relative overflow-hidden">
         <div class="flex items-center justify-between gap-2 mb-1.5">
           <div class="flex items-center gap-2">
-            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">Today's Session</span>
-            <span id="todayZoneBadge" class="text-xs font-medium px-2 py-0.5 rounded bg-slate-800 text-slate-300">Z2 - Endurance</span>
+            <span class="text-[11px] font-bold px-3 py-1 rounded-full bg-[#62CA77]/15 text-[#62CA77] border border-[#62CA77]/25 uppercase tracking-wider">Today's Session</span>
+            <span id="todayZoneBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#111418] text-slate-300 border border-white/[0.05]">Z2 - Endurance</span>
           </div>
-          <span id="todayStatusBadge" class="text-xs font-medium text-slate-400">Scheduled</span>
+          <span id="todayStatusBadge" class="text-[11px] font-bold text-slate-400">Scheduled</span>
         </div>
 
-        <div class="my-1">
-          <h2 id="todayTitle" class="text-base font-bold text-white tracking-tight truncate">No workout scheduled today</h2>
-          <p id="todayDescription" class="text-xs text-slate-400 line-clamp-2 mt-1">Enjoy a restful day or choose a session from the library.</p>
+        <div class="my-1.5">
+          <h2 id="todayTitle" class="text-base font-extrabold text-white tracking-tight truncate">No workout scheduled today</h2>
+          <p id="todayDescription" class="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">Enjoy a restful day or choose a session from the library.</p>
         </div>
 
-        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 mt-2 text-xs">
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/[0.06] mt-2 text-xs">
           <div class="flex items-center gap-3 text-slate-300">
-            <span><i data-lucide="clock" class="w-3.5 h-3.5 inline mr-1 text-slate-400"></i><strong id="todayDuration">--</strong></span>
-            <span><i data-lucide="activity" class="w-3.5 h-3.5 inline mr-1 text-slate-400"></i><strong id="todayTss">--</strong> TSS</span>
+            <span><i data-lucide="clock" class="w-3.5 h-3.5 inline mr-1 text-[#7DB6CC]"></i><strong id="todayDuration">--</strong></span>
+            <span><i data-lucide="activity" class="w-3.5 h-3.5 inline mr-1 text-[#62CA77]"></i><strong id="todayTss">--</strong> TSS</span>
           </div>
           <div id="todayActions" class="flex items-center gap-2">
-            <button id="btnViewToday" onclick="viewTodayDetails()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium transition border border-slate-700">Details</button>
-            <a id="btnTodayMyWhoosh" href="#" target="_blank" class="hidden px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded font-medium transition">MyWhoosh</a>
+            <button id="btnViewToday" onclick="viewTodayDetails()" class="cashew-pill-btn px-3.5 py-1.5 bg-white/10 hover:bg-white/15 text-slate-200 rounded-full font-bold transition border border-white/[0.06]">Details</button>
+            <a id="btnTodayMyWhoosh" href="#" target="_blank" class="cashew-pill-btn hidden px-3.5 py-1.5 bg-[#7DB6CC] hover:bg-[#92C6DA] text-slate-950 rounded-full font-bold transition">MyWhoosh</a>
           </div>
         </div>
       </div>
@@ -234,30 +255,30 @@
     <section class="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 items-start">
       
       <!-- CALENDAR SECTION (8 Cols) -->
-      <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+      <div class="lg:col-span-8 bg-[#1A1E24] border border-white/[0.06] rounded-[28px] p-5 shadow-sm hover:border-white/[0.10] transition-all">
         <div id="calendar"></div>
       </div>
 
       <!-- SIDEBAR: AI COACH & WORKOUT LIBRARY (4 Cols) -->
       <div class="lg:col-span-4 flex flex-col gap-4">
 
-        <!-- TAB SWITCHER -->
-        <div class="flex rounded-lg bg-slate-900 p-1 border border-slate-800">
-          <button id="tabBtnCoach" onclick="switchSidebarTab('coach')" class="flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition bg-sky-600 text-white shadow-sm flex items-center justify-center gap-1.5">
+        <!-- TAB SWITCHER (CASHEW SEGMENTED PILL) -->
+        <div class="flex rounded-full bg-[#111418] p-1 border border-white/[0.06]">
+          <button id="tabBtnCoach" onclick="switchSidebarTab('coach')" class="flex-1 py-2 px-4 rounded-full text-xs font-bold transition bg-[#7DB6CC] text-slate-950 shadow-sm flex items-center justify-center gap-1.5 active:scale-95">
             <i data-lucide="bot" class="w-3.5 h-3.5"></i>
             <span>AI Coach Chat</span>
           </button>
-          <button id="tabBtnLibrary" onclick="switchSidebarTab('library')" class="flex-1 py-1.5 px-3 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+          <button id="tabBtnLibrary" onclick="switchSidebarTab('library')" class="flex-1 py-2 px-4 rounded-full text-xs font-semibold text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5 active:scale-95">
             <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
             <span>MyWhoosh Library</span>
           </button>
         </div>
 
         <!-- TAB 1: AI COACH CHAT -->
-        <div id="tabCoach" class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col h-[560px] shadow-sm">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+        <div id="tabCoach" class="bg-[#1A1E24] border border-white/[0.06] rounded-[28px] p-5 flex flex-col h-[560px] shadow-sm">
+          <div class="flex items-center justify-between pb-3 border-b border-white/[0.06] mb-3">
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="w-2 h-2 rounded-full bg-[#62CA77] animate-pulse"></span>
               <span class="text-xs font-bold text-slate-200">Coach Gemini (Online)</span>
             </div>
             <button onclick="clearChatHistory()" class="text-[11px] text-slate-500 hover:text-slate-300 transition">Clear</button>
@@ -265,39 +286,39 @@
 
           <!-- Chat messages stream -->
           <div id="chatMessages" class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
-            <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-3 text-slate-300">
+            <div class="bg-[#222730] border border-white/[0.06] rounded-3xl rounded-tl-sm p-4 text-slate-200 leading-relaxed shadow-sm">
               👋 <strong>Hi athlete!</strong> I'm your AI cycling coach. I monitor your completed rides via MyWhoosh, adapt your training calendar, and select specific MyWhoosh workouts tailored to your goals and target races. How are your legs feeling today?
             </div>
           </div>
 
-          <!-- Quick Suggestion Chips -->
-          <div class="flex flex-wrap gap-1.5 py-2 border-t border-slate-800 mt-2">
-            <button onclick="sendQuickPrompt('How should I pace today\'s session?')" class="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">Pacing advice</button>
-            <button onclick="sendQuickPrompt('My legs are very heavy. Should I take a rest day?')" class="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">Feeling fatigued</button>
-            <button onclick="sendQuickPrompt('Give me a 60-minute sweetspot workout recommendation.')" class="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">Suggest Sweetspot</button>
+          <!-- Quick Suggestion Chips (Cashew Pills) -->
+          <div class="flex flex-wrap gap-1.5 py-2.5 border-t border-white/[0.06] mt-2">
+            <button onclick="sendQuickPrompt('How should I pace today\'s session?')" class="text-[11px] px-3 py-1.5 rounded-full bg-[#111418] hover:bg-[#222730] text-slate-300 border border-white/[0.06] transition active:scale-95">Pacing advice</button>
+            <button onclick="sendQuickPrompt('My legs are very heavy. Should I take a rest day?')" class="text-[11px] px-3 py-1.5 rounded-full bg-[#111418] hover:bg-[#222730] text-slate-300 border border-white/[0.06] transition active:scale-95">Feeling fatigued</button>
+            <button onclick="sendQuickPrompt('Give me a 60-minute sweetspot workout recommendation.')" class="text-[11px] px-3 py-1.5 rounded-full bg-[#111418] hover:bg-[#222730] text-slate-300 border border-white/[0.06] transition active:scale-95">Suggest Sweetspot</button>
           </div>
 
           <!-- Chat Input form -->
-          <form onsubmit="handleCoachChat(event)" class="flex gap-2 pt-2 border-t border-slate-800">
-            <input id="chatInput" type="text" placeholder="Ask your coach anything..." class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
-            <button type="submit" class="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-medium text-xs transition">
+          <form onsubmit="handleCoachChat(event)" class="flex gap-2 pt-2.5 border-t border-white/[0.06]">
+            <input id="chatInput" type="text" placeholder="Ask your coach anything..." class="flex-1 bg-[#111418] border border-white/[0.08] rounded-full px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#7DB6CC]">
+            <button type="submit" class="cashew-pill-btn px-4 py-2.5 bg-[#7DB6CC] hover:bg-[#92C6DA] text-slate-950 font-bold rounded-full text-xs transition flex items-center justify-center shadow-sm">
               <i data-lucide="send" class="w-3.5 h-3.5"></i>
             </button>
           </form>
         </div>
 
         <!-- TAB 2: MYWHOOSH WORKOUT LIBRARY -->
-        <div id="tabLibrary" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col h-[560px] shadow-sm">
-          <div class="mb-3 space-y-2">
+        <div id="tabLibrary" class="hidden bg-[#1A1E24] border border-white/[0.06] rounded-[28px] p-5 flex flex-col h-[560px] shadow-sm">
+          <div class="mb-3 space-y-2.5">
             <div class="flex items-center justify-between">
               <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Workout Library (847)</h3>
               <span id="libResultCount" class="text-[11px] text-slate-400">Loading...</span>
             </div>
             <!-- Search inputs -->
-            <input id="libSearchInput" oninput="debounceLibrarySearch()" type="text" placeholder="Search workouts by name or description..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+            <input id="libSearchInput" oninput="debounceLibrarySearch()" type="text" placeholder="Search workouts by name or description..." class="w-full bg-[#111418] border border-white/[0.08] rounded-2xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#7DB6CC]">
             
             <div class="grid grid-cols-2 gap-2">
-              <select id="libZoneFilter" onchange="fetchLibraryWorkouts()" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none">
+              <select id="libZoneFilter" onchange="fetchLibraryWorkouts()" class="bg-[#111418] border border-white/[0.08] rounded-2xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-[#7DB6CC]">
                 <option value="">All Zones</option>
                 <option value="Z1 - Recovery">Z1 - Recovery</option>
                 <option value="Z2 - Endurance">Z2 - Endurance</option>
@@ -307,7 +328,7 @@
                 <option value="Z6 - Anaerobic">Z6 - Anaerobic</option>
                 <option value="Free Ride">Free Ride</option>
               </select>
-              <select id="libDurationFilter" onchange="fetchLibraryWorkouts()" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none">
+              <select id="libDurationFilter" onchange="fetchLibraryWorkouts()" class="bg-[#111418] border border-white/[0.08] rounded-2xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-[#7DB6CC]">
                 <option value="">All Durations</option>
                 <option value="35">Under 35 mins</option>
                 <option value="60">45 - 60 mins</option>
@@ -330,65 +351,69 @@
   </main>
 
   <!-- MODAL: WORKOUT DETAILS -->
-  <div id="workoutModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+  <div id="workoutModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-[#1A1E24] border border-white/[0.08] rounded-[28px] max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Drag handle indicator -->
+      <div class="pt-3 pb-1 flex justify-center">
+        <div class="w-10 h-1 bg-white/20 rounded-full"></div>
+      </div>
       <!-- Modal Header -->
-      <div class="p-5 border-b border-slate-800 flex items-start justify-between gap-4">
+      <div class="px-6 py-4 border-b border-white/[0.06] flex items-start justify-between gap-4">
         <div>
-          <div class="flex items-center gap-2 mb-1">
-            <span id="modalZoneTag" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Zone</span>
-            <span id="modalStatusTag" class="text-xs font-medium px-2 py-0.5 rounded bg-slate-800 text-slate-400">Scheduled</span>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span id="modalZoneTag" class="text-xs font-bold px-3 py-0.5 rounded-full bg-[#7DB6CC]/15 text-[#7DB6CC] border border-[#7DB6CC]/30">Zone</span>
+            <span id="modalStatusTag" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/[0.08] text-white/70">Scheduled</span>
           </div>
           <h2 id="modalTitle" class="text-xl font-bold text-white tracking-tight">Workout Title</h2>
-          <p id="modalDate" class="text-xs text-slate-400 mt-0.5">Date: 2026-09-07</p>
+          <p id="modalDate" class="text-xs text-white/50 mt-0.5">Date: 2026-09-07</p>
         </div>
-        <button onclick="closeWorkoutModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
+        <button onclick="closeWorkoutModal()" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white/60 hover:text-white flex items-center justify-center transition active:scale-95">
+          <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
       <!-- Modal Body -->
-      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+      <div class="p-6 overflow-y-auto space-y-4 text-xs">
         
         <!-- Metrics Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#12151A] p-4 rounded-2xl border border-white/[0.06]">
           <div>
-            <div class="text-slate-400 text-[11px]">Duration</div>
+            <div class="text-white/40 text-[11px] font-medium">Duration</div>
             <div id="modalDuration" class="font-bold text-sm text-white">60 min</div>
           </div>
           <div>
-            <div class="text-slate-400 text-[11px]">Planned TSS</div>
-            <div id="modalTss" class="font-bold text-sm text-white">50</div>
+            <div class="text-white/40 text-[11px] font-medium">Planned TSS</div>
+            <div id="modalTss" class="font-bold text-sm text-[#7DB6CC]">50</div>
           </div>
           <div>
-            <div class="text-slate-400 text-[11px]">Actual TSS</div>
-            <div id="modalActualTss" class="font-bold text-sm text-emerald-400">--</div>
+            <div class="text-white/40 text-[11px] font-medium">Actual TSS</div>
+            <div id="modalActualTss" class="font-bold text-sm text-[#62CA77]">--</div>
           </div>
           <div>
-            <div class="text-slate-400 text-[11px]">Actual Power / HR</div>
-            <div id="modalActualPower" class="font-bold text-sm text-slate-200">--</div>
+            <div class="text-white/40 text-[11px] font-medium">Actual Power / HR</div>
+            <div id="modalActualPower" class="font-bold text-sm text-white/90">--</div>
           </div>
         </div>
 
         <!-- Coach Notes / Debrief -->
-        <div id="modalCoachNotesBox" class="bg-sky-950/40 border border-sky-800/40 rounded-xl p-3.5">
-          <div class="flex items-center gap-1.5 text-sky-400 font-bold mb-1">
+        <div id="modalCoachNotesBox" class="bg-[#1B447A]/20 border border-[#7DB6CC]/30 rounded-2xl p-4">
+          <div class="flex items-center gap-1.5 text-[#7DB6CC] font-bold mb-1">
             <i data-lucide="bot" class="w-4 h-4"></i>
             <span>Coach Guidance & Debrief</span>
           </div>
-          <p id="modalCoachNotes" class="text-slate-300 leading-relaxed">No specific notes for this session.</p>
+          <p id="modalCoachNotes" class="text-white/80 leading-relaxed">No specific notes for this session.</p>
         </div>
 
         <!-- Description -->
         <div>
-          <h4 class="font-bold text-slate-300 uppercase tracking-wider text-[11px] mb-1">Description</h4>
-          <p id="modalDescription" class="text-slate-400 leading-relaxed bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">Description text...</p>
+          <h4 class="font-bold text-white/60 uppercase tracking-wider text-[11px] mb-1.5">Description</h4>
+          <p id="modalDescription" class="text-white/70 leading-relaxed bg-[#12151A] p-3.5 rounded-2xl border border-white/[0.06]">Description text...</p>
         </div>
 
         <!-- Structured Steps Breakdown -->
         <div>
-          <h4 class="font-bold text-slate-300 uppercase tracking-wider text-[11px] mb-1">Interval Breakdown</h4>
-          <div id="modalSteps" class="font-mono text-[11px] bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+          <h4 class="font-bold text-white/60 uppercase tracking-wider text-[11px] mb-1.5">Interval Breakdown</h4>
+          <div id="modalSteps" class="font-mono text-[11px] bg-[#12151A] p-3.5 rounded-2xl border border-white/[0.06] text-white/80 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
             Warmup 10:00 @ 50% | 3x [03:00 @ 110%, 02:00 @ 50%] | Cooldown 05:00
           </div>
         </div>
@@ -396,18 +421,18 @@
       </div>
 
       <!-- Modal Footer Actions -->
-      <div class="p-4 border-t border-slate-800 bg-slate-950/60 flex flex-wrap items-center justify-between gap-2">
+      <div class="p-4 border-t border-white/[0.06] bg-[#12151A]/60 flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-2">
-          <button id="btnMarkCompleted" onclick="markEventStatus('completed')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition">Mark Completed</button>
-          <button id="btnMarkSkipped" onclick="markEventStatus('skipped')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition border border-slate-700">Skip</button>
-          <button id="btnDeleteEvent" onclick="deleteCurrentEvent()" class="px-3 py-1.5 text-red-400 hover:bg-red-500/10 rounded-lg text-xs font-medium transition">Delete</button>
+          <button id="btnMarkCompleted" onclick="markEventStatus('completed')" class="px-4 py-2 bg-[#62CA77] hover:bg-[#52B967] text-[#0F1115] rounded-full text-xs font-bold transition active:scale-95 shadow-sm">Mark Completed</button>
+          <button id="btnMarkSkipped" onclick="markEventStatus('skipped')" class="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 rounded-full text-xs font-semibold transition active:scale-95 border border-white/[0.06]">Skip</button>
+          <button id="btnDeleteEvent" onclick="deleteCurrentEvent()" class="px-3.5 py-2 text-[#DA7272] hover:bg-[#DA7272]/15 rounded-full text-xs font-semibold transition active:scale-95">Delete</button>
         </div>
         <div class="flex items-center gap-2">
-          <button id="btnExportZwo" onclick="downloadCurrentWorkoutZwo()" class="px-3.5 py-1.5 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-semibold transition inline-flex items-center gap-1.5 shadow-sm" title="Download Zwift Workout File (.zwo)">
+          <button id="btnExportZwo" onclick="downloadCurrentWorkoutZwo()" class="px-4 py-2 bg-[#DA9C72] hover:bg-[#CA8C62] text-[#0F1115] rounded-full text-xs font-bold transition active:scale-95 inline-flex items-center gap-1.5 shadow-sm" title="Download Zwift Workout File (.zwo)">
             <i data-lucide="download" class="w-3.5 h-3.5"></i>
             <span>Download .ZWO</span>
           </button>
-          <a id="modalMyWhooshLink" href="#" target="_blank" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold transition inline-flex items-center gap-1.5">
+          <a id="modalMyWhooshLink" href="#" target="_blank" class="px-4 py-2 bg-[#7DB6CC] hover:bg-[#6CA5BB] text-[#0F1115] rounded-full text-xs font-bold transition active:scale-95 inline-flex items-center gap-1.5 shadow-sm">
             <span>Open in MyWhoosh</span>
             <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
           </a>
@@ -418,28 +443,33 @@
   </div>
 
   <!-- MODAL: AI PLAN GENERATOR -->
-  <div id="planModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+  <div id="planModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-[#1A1E24] border border-white/[0.08] rounded-[28px] max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
       
+      <!-- Drag handle indicator -->
+      <div class="w-10 h-1 bg-white/20 rounded-full mx-auto mb-1"></div>
+
       <!-- MODAL HEADER -->
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div class="flex items-center justify-between border-b border-white/[0.06] pb-3">
         <div class="flex items-center gap-2">
-          <i data-lucide="sparkles" class="w-5 h-5 text-sky-400"></i>
+          <i data-lucide="sparkles" class="w-5 h-5 text-[#7DB6CC]"></i>
           <h3 id="planModalTitle" class="font-bold text-lg text-white">Generate Training Plan</h3>
         </div>
-        <button onclick="closePlanModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button onclick="closePlanModal()" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white/60 hover:text-white flex items-center justify-center transition active:scale-95">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
       </div>
 
       <!-- VIEW 1: PLAN FORM -->
-      <div id="planFormView" class="space-y-3 text-xs">
+      <div id="planFormView" class="space-y-3.5 text-xs">
         <div>
-          <label class="block font-medium text-slate-300 mb-1">Start Date</label>
-          <input id="planStartDate" type="date" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
+          <label class="block font-medium text-white/80 mb-1.5">Start Date</label>
+          <input id="planStartDate" type="date" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#7DB6CC] focus:ring-1 focus:ring-[#7DB6CC]/40 transition text-xs">
         </div>
 
         <div>
-          <label class="block font-medium text-slate-300 mb-1">Plan Duration</label>
-          <select id="planDays" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
+          <label class="block font-medium text-white/80 mb-1.5">Plan Duration</label>
+          <select id="planDays" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#7DB6CC] focus:ring-1 focus:ring-[#7DB6CC]/40 transition text-xs">
             <option value="7">1 Week (7 Days)</option>
             <option value="14" selected>2 Weeks (14 Days)</option>
             <option value="28">4 Weeks (28 Days)</option>
@@ -447,31 +477,31 @@
         </div>
 
         <div>
-          <label class="block font-medium text-slate-300 mb-1">Special Goals / Event Target / Focus (Optional)</label>
-          <textarea id="planInstructions" rows="3" placeholder="e.g. Focus on climbing endurance for a Gran Fondo, or reduce Wednesday duration to 45 mins." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500"></textarea>
+          <label class="block font-medium text-white/80 mb-1.5">Special Goals / Event Target / Focus (Optional)</label>
+          <textarea id="planInstructions" rows="3" placeholder="e.g. Focus on climbing endurance for a Gran Fondo, or reduce Wednesday duration to 45 mins." class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#7DB6CC] focus:ring-1 focus:ring-[#7DB6CC]/40 transition text-xs"></textarea>
         </div>
 
         <!-- Overwrite Policy Toggle -->
-        <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-start gap-2.5">
-          <input type="checkbox" id="planOverwriteExisting" checked class="mt-0.5 w-4 h-4 rounded text-sky-600 bg-slate-900 border-slate-700 focus:ring-sky-500">
+        <div class="bg-[#12151A] p-3 rounded-2xl border border-white/[0.06] flex items-start gap-2.5">
+          <input type="checkbox" id="planOverwriteExisting" checked class="mt-0.5 w-4 h-4 rounded-md text-[#7DB6CC] bg-[#1A1E24] border-white/20 focus:ring-[#7DB6CC]">
           <div>
-            <label for="planOverwriteExisting" class="block font-medium text-slate-200 cursor-pointer">Overwrite uncompleted workouts in this date range</label>
-            <p class="text-[11px] text-slate-400 mt-0.5">Recommended. Builds a freshly optimized schedule. <strong>Target races and completed rides are always preserved.</strong></p>
+            <label for="planOverwriteExisting" class="block font-medium text-white/90 cursor-pointer">Overwrite uncompleted workouts in this date range</label>
+            <p class="text-[11px] text-white/40 mt-0.5">Recommended. Builds a freshly optimized schedule. <strong>Target races and completed rides are always preserved.</strong></p>
           </div>
         </div>
 
         <!-- Autonomous Coaching Indicator -->
-        <div class="bg-indigo-950/30 border border-indigo-800/40 rounded-lg p-2.5 flex items-center gap-2.5 text-indigo-300">
-          <i data-lucide="brain-circuit" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+        <div class="bg-[#1B447A]/25 border border-[#7DB6CC]/30 rounded-2xl p-3 flex items-center gap-2.5 text-[#7DB6CC]">
+          <i data-lucide="brain-circuit" class="w-4 h-4 text-[#7DB6CC] shrink-0"></i>
           <div>
-            <span class="font-bold text-slate-200">Autonomous Coach Active</span>
-            <p class="text-[11px] text-slate-400 mt-0.5">Session durations and TSS are organically calculated based on your fitness, recent fatigue, and upcoming races.</p>
+            <span class="font-bold text-white">Autonomous Coach Active</span>
+            <p class="text-[11px] text-white/50 mt-0.5">Session durations and TSS are organically calculated based on your fitness, recent fatigue, and upcoming races.</p>
           </div>
         </div>
 
-        <div class="pt-3 border-t border-slate-800 flex justify-end gap-2 text-xs">
-          <button onclick="closePlanModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition">Cancel</button>
-          <button id="btnSubmitPlan" onclick="generatePlan()" class="px-5 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold rounded-lg transition flex items-center gap-2 shadow-sm">
+        <div class="pt-3 border-t border-white/[0.06] flex justify-end gap-2 text-xs">
+          <button onclick="closePlanModal()" class="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 rounded-full font-semibold transition active:scale-95">Cancel</button>
+          <button id="btnSubmitPlan" onclick="generatePlan()" class="px-5 py-2 bg-[#7DB6CC] hover:bg-[#6CA5BB] text-[#0F1115] font-bold rounded-full transition flex items-center gap-2 shadow-sm active:scale-95">
             <i data-lucide="sparkles" class="w-4 h-4"></i>
             <span>Build Plan</span>
           </button>
@@ -481,80 +511,80 @@
       <!-- VIEW 2: LOADING / PLANNING PROGRESS -->
       <div id="planLoadingView" class="hidden py-6 space-y-5 text-center">
         <div class="relative w-16 h-16 mx-auto flex items-center justify-center">
-          <div class="absolute inset-0 rounded-full bg-sky-500/20 animate-ping"></div>
-          <div class="relative z-10 w-12 h-12 rounded-full bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+          <div class="absolute inset-0 rounded-full bg-[#7DB6CC]/20 animate-ping"></div>
+          <div class="relative z-10 w-12 h-12 rounded-full bg-[#7DB6CC] text-[#0F1115] flex items-center justify-center shadow-lg">
             <i data-lucide="sparkles" class="w-6 h-6 animate-spin"></i>
           </div>
         </div>
 
         <div class="space-y-1">
           <h4 class="font-bold text-lg text-white">Gemini AI Coach is Planning...</h4>
-          <p class="text-xs text-slate-400">Analyzing fatigue, race targets, and matching MyWhoosh workouts</p>
+          <p class="text-xs text-white/50">Analyzing fatigue, race targets, and matching MyWhoosh workouts</p>
         </div>
 
         <!-- Step checklist -->
-        <div class="max-w-xs mx-auto text-left space-y-2 text-xs bg-slate-950 p-3.5 rounded-xl border border-slate-800 font-mono">
-          <div id="loadStep1" class="flex items-center gap-2 text-sky-400">
-            <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <div class="max-w-xs mx-auto text-left space-y-2 text-xs bg-[#12151A] p-4 rounded-2xl border border-white/[0.06] font-mono">
+          <div id="loadStep1" class="flex items-center gap-2 text-[#7DB6CC]">
+            <i data-lucide="check" class="w-3.5 h-3.5 text-[#62CA77]"></i>
             <span>1. Evaluating ride history & fatigue</span>
           </div>
-          <div id="loadStep2" class="flex items-center gap-2 text-sky-400">
-            <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-sky-400"></i>
+          <div id="loadStep2" class="flex items-center gap-2 text-[#7DB6CC]">
+            <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-[#7DB6CC]"></i>
             <span>2. Checking race calendar & tapers</span>
           </div>
-          <div id="loadStep3" class="flex items-center gap-2 text-slate-500">
+          <div id="loadStep3" class="flex items-center gap-2 text-white/40">
             <i data-lucide="circle" class="w-3.5 h-3.5"></i>
             <span>3. Matching MyWhoosh catalog</span>
           </div>
-          <div id="loadStep4" class="flex items-center gap-2 text-slate-500">
+          <div id="loadStep4" class="flex items-center gap-2 text-white/40">
             <i data-lucide="circle" class="w-3.5 h-3.5"></i>
             <span>4. Assembling personalized schedule</span>
           </div>
         </div>
 
-        <div class="text-[11px] text-slate-500">
-          Elapsed: <span id="planTimerSeconds" class="font-bold text-slate-300">0s</span> • Periodization typically takes ~10–25s.
+        <div class="text-[11px] text-white/40">
+          Elapsed: <span id="planTimerSeconds" class="font-bold text-white/80">0s</span> • Periodization typically takes ~10–25s.
         </div>
       </div>
 
       <!-- VIEW 3: SUCCESS CONFIRMATION & PREVIEW -->
       <div id="planSuccessView" class="hidden space-y-4 text-xs">
-        <div class="bg-emerald-950/40 border border-emerald-800/40 rounded-xl p-4 flex items-start gap-3">
-          <div class="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg shrink-0 mt-0.5">
+        <div class="bg-[#1C3825]/40 border border-[#62CA77]/40 rounded-2xl p-4 flex items-start gap-3">
+          <div class="p-2 bg-[#62CA77]/20 text-[#62CA77] rounded-full shrink-0 mt-0.5">
             <i data-lucide="check-circle-2" class="w-6 h-6"></i>
           </div>
           <div class="space-y-1.5 flex-1">
             <div class="flex items-center justify-between">
               <h4 class="font-bold text-base text-white">Training Plan Successfully Scheduled!</h4>
-              <span id="planSuccessModel" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20">gemini-3.6-flash</span>
+              <span id="planSuccessModel" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#7DB6CC]/15 text-[#7DB6CC] border border-[#7DB6CC]/30">gemini-3.5-flash</span>
             </div>
-            <p id="planSuccessFocus" class="text-emerald-300 font-semibold text-xs leading-snug"></p>
+            <p id="planSuccessFocus" class="text-[#62CA77] font-semibold text-xs leading-snug"></p>
             <div id="planSuccessMeta" class="flex flex-wrap gap-2 pt-1 text-[11px]"></div>
           </div>
         </div>
 
         <!-- Coach Strategic Rationale -->
-        <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
-          <div class="flex items-center gap-1.5 font-bold text-sky-400 text-[11px]">
+        <div class="bg-[#12151A] p-4 rounded-2xl border border-white/[0.06] space-y-1.5">
+          <div class="flex items-center gap-1.5 font-bold text-[#7DB6CC] text-[11px]">
             <i data-lucide="bot" class="w-4 h-4"></i>
             <span>Coach Periodization Strategy</span>
           </div>
-          <p id="planSuccessOverview" class="text-slate-300 leading-relaxed"></p>
+          <p id="planSuccessOverview" class="text-white/80 leading-relaxed"></p>
         </div>
 
         <!-- Scheduled Sessions Breakdown -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <span class="font-bold text-slate-300 uppercase tracking-wider text-[11px]">Scheduled Sessions</span>
-            <span id="planSuccessCount" class="text-[11px] text-slate-400 font-mono"></span>
+            <span class="font-bold text-white/60 uppercase tracking-wider text-[11px]">Scheduled Sessions</span>
+            <span id="planSuccessCount" class="text-[11px] text-white/40 font-mono"></span>
           </div>
           <div id="planSuccessList" class="space-y-1.5 max-h-56 overflow-y-auto pr-1"></div>
         </div>
 
         <!-- Success Actions -->
-        <div class="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
-          <button onclick="closePlanModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition">Done</button>
-          <button id="btnViewOnCalendar" onclick="jumpToPlanOnCalendar()" class="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-lg transition flex items-center gap-2 shadow-sm">
+        <div class="pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
+          <button onclick="closePlanModal()" class="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 rounded-full font-semibold transition active:scale-95">Done</button>
+          <button id="btnViewOnCalendar" onclick="jumpToPlanOnCalendar()" class="px-5 py-2 bg-[#62CA77] hover:bg-[#52B967] text-[#0F1115] font-bold rounded-full transition flex items-center gap-2 shadow-sm active:scale-95">
             <i data-lucide="calendar" class="w-4 h-4"></i>
             <span>View on Calendar</span>
           </button>
@@ -563,34 +593,34 @@
 
       <!-- VIEW 4: ERROR DISPLAY -->
       <div id="planErrorView" class="hidden space-y-4 text-xs">
-        <div class="bg-rose-950/40 border border-rose-800/40 rounded-xl p-4 flex items-start gap-3">
-          <div class="p-2 bg-rose-500/20 text-rose-400 rounded-lg shrink-0 mt-0.5">
+        <div class="bg-[#DA7272]/20 border border-[#DA7272]/30 rounded-2xl p-4 flex items-start gap-3">
+          <div class="p-2 bg-[#DA7272]/20 text-[#DA7272] rounded-full shrink-0 mt-0.5">
             <i data-lucide="alert-triangle" class="w-6 h-6"></i>
           </div>
           <div class="space-y-2 flex-1">
             <h4 class="font-bold text-base text-white">Plan Generation Failed</h4>
-            <div id="planErrorMessage" class="text-rose-300 text-xs font-mono bg-slate-950/80 p-3 rounded-lg border border-rose-900/50 break-words leading-relaxed"></div>
+            <div id="planErrorMessage" class="text-[#DA7272] text-xs font-mono bg-[#12151A] p-3 rounded-xl border border-[#DA7272]/30 break-words leading-relaxed"></div>
           </div>
         </div>
 
-        <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-slate-400 space-y-2">
-          <div class="font-bold text-slate-200 text-[11px]">Recommended Troubleshooting:</div>
+        <div class="bg-[#12151A] p-4 rounded-2xl border border-white/[0.06] text-white/60 space-y-2">
+          <div class="font-bold text-white text-[11px]">Recommended Troubleshooting:</div>
           <ul class="list-disc list-inside space-y-1 text-[11px]">
             <li>Open <strong>Settings</strong> and click <strong>"Test Gemini Key"</strong> to verify your API key and latency.</li>
-            <li>If you hit quota limits (HTTP 429), switch preferred model to <strong>gemini-2.5-flash-lite</strong>.</li>
+            <li>If you hit quota limits (HTTP 429), switch preferred model to <strong>gemini-3.5-flash-lite</strong>.</li>
             <li>Ensure the Start Date is formatted correctly (YYYY-MM-DD).</li>
           </ul>
         </div>
 
         <!-- Error Actions -->
-        <div class="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
-          <button onclick="openSettingsModal()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition flex items-center gap-1.5">
+        <div class="pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
+          <button onclick="openSettingsModal()" class="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 rounded-full font-semibold transition flex items-center gap-1.5 active:scale-95">
             <i data-lucide="settings" class="w-3.5 h-3.5"></i>
             <span>Open Settings</span>
           </button>
           <div class="flex items-center gap-2">
-            <button onclick="resetPlanModalToForm()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition">Edit Parameters</button>
-            <button onclick="generatePlan()" class="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg transition flex items-center gap-2">
+            <button onclick="resetPlanModalToForm()" class="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 rounded-full font-semibold transition active:scale-95">Edit Parameters</button>
+            <button onclick="generatePlan()" class="px-5 py-2 bg-[#DA7272] hover:bg-[#CA6262] text-[#0F1115] font-bold rounded-full transition flex items-center gap-2 active:scale-95">
               <i data-lucide="refresh-cw" class="w-4 h-4"></i>
               <span>Try Again</span>
             </button>
@@ -602,53 +632,61 @@
   </div>
 
   <!-- MODAL: ATHLETE DOSSIER & PROTOCOL RULES (SECTION 11) -->
-  <div id="dossierModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-      <div class="p-5 border-b border-slate-800 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <i data-lucide="shield" class="w-5 h-5 text-emerald-400"></i>
+  <div id="dossierModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-[#1A1E24] border border-white/[0.08] rounded-[28px] max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Drag handle indicator -->
+      <div class="pt-3 pb-1 flex justify-center">
+        <div class="w-10 h-1 bg-white/20 rounded-full"></div>
+      </div>
+      <div class="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-full bg-[#62CA77]/15 flex items-center justify-center">
+            <i data-lucide="shield" class="w-4 h-4 text-[#62CA77]"></i>
+          </div>
           <div>
             <h3 class="font-bold text-base text-white">Athlete Dossier & Rules Vault</h3>
-            <p class="text-[11px] text-slate-400">Section 11 Protocol Stable Context & Mandatory Directives</p>
+            <p class="text-[11px] text-white/40">Section 11 Protocol Stable Context & Mandatory Directives</p>
           </div>
         </div>
-        <button onclick="closeDossierModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button onclick="closeDossierModal()" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white/60 hover:text-white flex items-center justify-center transition active:scale-95">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
       </div>
 
-      <div class="p-5 overflow-y-auto space-y-4 text-xs">
+      <div class="p-6 overflow-y-auto space-y-4 text-xs">
         <div>
-          <label class="block font-bold text-slate-200 mb-1">Long-Term Training Goals</label>
-          <textarea id="dossierGoals" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-sky-500" placeholder="e.g. Build aerobic base, raise sustainable FTP, target 100km Gran Fondo."></textarea>
+          <label class="block font-bold text-white mb-1.5">Long-Term Training Goals</label>
+          <textarea id="dossierGoals" rows="2" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-3 text-white text-xs focus:outline-none focus:border-[#7DB6CC] focus:ring-1 focus:ring-[#7DB6CC]/40 transition" placeholder="e.g. Build aerobic base, raise sustainable FTP, target 100km Gran Fondo."></textarea>
         </div>
 
         <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="block font-bold text-slate-200">Mandatory Schedule Constraints (Forbidden Days)</label>
-            <span class="text-[10px] text-amber-400 font-semibold">Strictly Enforced in Code</span>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block font-bold text-white">Mandatory Schedule Constraints (Forbidden Days)</label>
+            <span class="text-[10px] text-[#DA9C72] font-semibold">Strictly Enforced in Code</span>
           </div>
-          <textarea id="dossierConstraints" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-sky-500" placeholder="e.g. Strictly NO workouts on Saturday and Sunday. Available on Tuesday and Thursday."></textarea>
-          <p class="text-[10px] text-slate-400 mt-1">Days specified here will NEVER have workouts scheduled on them.</p>
+          <textarea id="dossierConstraints" rows="2" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-3 text-white text-xs focus:outline-none focus:border-[#7DB6CC] focus:ring-1 focus:ring-[#7DB6CC]/40 transition" placeholder="e.g. Strictly NO workouts on Saturday and Sunday. Available on Tuesday and Thursday."></textarea>
+          <p class="text-[10px] text-white/40 mt-1">Days specified here will NEVER have workouts scheduled on them.</p>
         </div>
 
         <div>
-          <label class="block font-bold text-slate-200 mb-1">Health & Injury Notes</label>
-          <textarea id="dossierInjury" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-sky-500" placeholder="e.g. None currently active / Recovering from knee strain."></textarea>
+          <label class="block font-bold text-white mb-1.5">Health & Injury Notes</label>
+          <textarea id="dossierInjury" rows="2" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-3 text-white text-xs focus:outline-none focus:border-[#7DB6CC] focus:ring-1 focus:ring-[#7DB6CC]/40 transition" placeholder="e.g. None currently active / Recovering from knee strain."></textarea>
         </div>
 
         <div>
-          <label class="block font-bold text-slate-200 mb-1">Equipment & Platform Setup</label>
-          <textarea id="dossierEquipment" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-sky-500" placeholder="e.g. Smart trainer with ERG mode (indoor) and road/gravel bike with power meter (outdoor)."></textarea>
+          <label class="block font-bold text-white mb-1.5">Equipment & Platform Setup</label>
+          <textarea id="dossierEquipment" rows="2" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-3 text-white text-xs focus:outline-none focus:border-[#7DB6CC] focus:ring-1 focus:ring-[#7DB6CC]/40 transition" placeholder="e.g. Smart trainer with ERG mode (indoor) and road/gravel bike with power meter (outdoor)."></textarea>
         </div>
 
         <div>
-          <label class="block font-bold text-slate-200 mb-1">Training Preferences</label>
-          <textarea id="dossierPreferences" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white text-xs focus:outline-none focus:border-sky-500" placeholder="e.g. Prefers progressive sweet spot and VO2max micro-intervals over steady state 20m threshold."></textarea>
+          <label class="block font-bold text-white mb-1.5">Training Preferences</label>
+          <textarea id="dossierPreferences" rows="2" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-3 text-white text-xs focus:outline-none focus:border-[#7DB6CC] focus:ring-1 focus:ring-[#7DB6CC]/40 transition" placeholder="e.g. Prefers progressive sweet spot and VO2max micro-intervals over steady state 20m threshold."></textarea>
         </div>
       </div>
 
-      <div class="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-end gap-2">
-        <button onclick="closeDossierModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition text-xs">Cancel</button>
-        <button onclick="saveDossier()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition text-xs flex items-center gap-1.5">
+      <div class="p-4 border-t border-white/[0.06] bg-[#12151A]/60 flex items-center justify-end gap-2">
+        <button onclick="closeDossierModal()" class="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 rounded-full font-semibold transition text-xs active:scale-95">Cancel</button>
+        <button onclick="saveDossier()" class="px-5 py-2 bg-[#62CA77] hover:bg-[#52B967] text-[#0F1115] font-bold rounded-full transition text-xs flex items-center gap-1.5 active:scale-95 shadow-sm">
           <i data-lucide="check" class="w-4 h-4"></i>
           <span>Save Dossier</span>
         </button>
@@ -657,36 +695,44 @@
   </div>
 
   <!-- MODAL: SETTINGS -->
-  <div id="settingsModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-      <div class="p-5 border-b border-slate-800 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <i data-lucide="settings" class="w-5 h-5 text-slate-400"></i>
+  <div id="settingsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-[#1A1E24] border border-white/[0.08] rounded-[28px] max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Drag handle indicator -->
+      <div class="pt-3 pb-1 flex justify-center">
+        <div class="w-10 h-1 bg-white/20 rounded-full"></div>
+      </div>
+      <div class="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center">
+            <i data-lucide="settings" class="w-4 h-4 text-white/70"></i>
+          </div>
           <h3 class="font-bold text-lg text-white">App & Coach Settings</h3>
         </div>
-        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white/60 hover:text-white flex items-center justify-center transition active:scale-95">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
       </div>
 
-      <div class="p-5 overflow-y-auto space-y-5 text-xs">
+      <div class="p-6 overflow-y-auto space-y-4 text-xs">
         
         <!-- Active Athlete & Platform Selector -->
-        <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+        <div class="space-y-3 bg-[#12151A] p-4 rounded-2xl border border-white/[0.06]">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <i data-lucide="user" class="w-4 h-4 text-sky-400"></i>
-              <label class="block font-bold text-slate-200">Active Athlete Profile</label>
+              <i data-lucide="user" class="w-4 h-4 text-[#7DB6CC]"></i>
+              <label class="block font-bold text-white">Active Athlete Profile</label>
             </div>
-            <span id="settingsAthleteIdBadge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20">Profile #1</span>
+            <span id="settingsAthleteIdBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#7DB6CC]/15 text-[#7DB6CC] border border-[#7DB6CC]/30">Profile #1</span>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <span class="text-[11px] text-slate-400">Athlete Display Name</span>
-              <input id="settingAthleteName" type="text" placeholder="e.g. Xander, Mom" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-sky-500">
+              <span class="text-[11px] text-white/40">Athlete Display Name</span>
+              <input id="settingAthleteName" type="text" placeholder="e.g. Xander, Mom" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 focus:outline-none focus:border-[#7DB6CC] text-xs">
             </div>
             <div>
-              <span class="text-[11px] text-slate-400">Primary Cycling Platform</span>
-              <select id="settingPlatform" onchange="togglePlatformCardsUI()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-sky-500">
+              <span class="text-[11px] text-white/40">Primary Cycling Platform</span>
+              <select id="settingPlatform" onchange="togglePlatformCardsUI()" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 focus:outline-none focus:border-[#7DB6CC] text-xs">
                 <option value="mywhoosh">MyWhoosh (Free Cloud Sync)</option>
                 <option value="zwift">Zwift (Cloud Sync & .ZWO Export)</option>
                 <option value="both">Both Platforms</option>
@@ -696,26 +742,26 @@
         </div>
 
         <!-- Gemini AI Engine Settings -->
-        <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+        <div class="space-y-3 bg-[#12151A] p-4 rounded-2xl border border-white/[0.06]">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <i data-lucide="sparkles" class="w-4 h-4 text-sky-400"></i>
-              <label class="block font-bold text-slate-200">Google Gemini AI Engine</label>
+              <i data-lucide="sparkles" class="w-4 h-4 text-[#7DB6CC]"></i>
+              <label class="block font-bold text-white">Google Gemini AI Engine</label>
             </div>
-            <span id="geminiModelBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20">Auto-Fallback Ready</span>
+            <span id="geminiModelBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#7DB6CC]/15 text-[#7DB6CC] border border-[#7DB6CC]/30">Auto-Fallback Ready</span>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <span class="text-[11px] text-slate-400">Gemini API Key</span>
+              <span class="text-[11px] text-white/40">Gemini API Key</span>
               <div class="flex gap-1.5 mt-1">
-                <input id="settingGeminiKey" type="password" placeholder="AIzaSy..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-sky-500">
-                <button type="button" onclick="togglePasswordVisibility('settingGeminiKey')" class="px-2.5 bg-slate-800 text-slate-400 rounded-lg hover:text-white transition text-xs">Show</button>
+                <input id="settingGeminiKey" type="password" placeholder="AIzaSy..." class="flex-1 bg-[#1A1E24] border border-white/[0.08] rounded-2xl px-3 py-2 text-white focus:outline-none focus:border-[#7DB6CC] text-xs">
+                <button type="button" onclick="togglePasswordVisibility('settingGeminiKey')" class="px-3 bg-white/[0.08] text-white/70 rounded-full hover:text-white transition text-xs active:scale-95">Show</button>
               </div>
             </div>
             <div>
-              <span class="text-[11px] text-slate-400">Preferred Gemini Model</span>
-              <select id="settingGeminiModel" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-sky-500">
+              <span class="text-[11px] text-white/40">Preferred Gemini Model</span>
+              <select id="settingGeminiModel" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 focus:outline-none focus:border-[#7DB6CC] text-xs">
                 <option value="gemini-3.5-flash" selected>gemini-3.5-flash (Recommended - Fast & Stable)</option>
                 <option value="gemini-3.8-flash">gemini-3.8-flash (Latest - Deep Reasoning)</option>
                 <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Fastest - High Quota)</option>
@@ -723,128 +769,126 @@
             </div>
           </div>
 
-          <div class="pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-slate-900">
-            <button type="button" onclick="testGeminiConnection()" class="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm">
+          <div class="pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06]">
+            <button type="button" onclick="testGeminiConnection()" class="px-4 py-2 bg-[#7DB6CC] hover:bg-[#6CA5BB] text-[#0F1115] font-bold rounded-full transition flex items-center gap-1.5 shadow-sm active:scale-95">
               <i data-lucide="zap" class="w-3.5 h-3.5"></i>
               <span>Test Gemini Key</span>
             </button>
-            <span id="geminiTestStatus" class="text-[11px] text-slate-500">⚡ Automatic fallback active if model runs out of quota.</span>
+            <span id="geminiTestStatus" class="text-[11px] text-white/40">⚡ Automatic fallback active if model runs out of quota.</span>
           </div>
         </div>
 
         <!-- MyWhoosh Cloud Connection Card -->
-        <div id="mywhooshSettingsCard" class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+        <div id="mywhooshSettingsCard" class="space-y-3 bg-[#12151A] p-4 rounded-2xl border border-white/[0.06]">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <i data-lucide="cloud" class="w-4 h-4 text-emerald-400"></i>
-              <label class="font-bold text-slate-200">MyWhoosh Cloud Connection (Direct & Free)</label>
+              <i data-lucide="cloud" class="w-4 h-4 text-[#62CA77]"></i>
+              <label class="font-bold text-white">MyWhoosh Cloud Connection (Direct & Free)</label>
             </div>
-            <span id="settingsMyWhooshBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Not Linked</span>
+            <span id="settingsMyWhooshBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#DA9C72]/15 text-[#DA9C72] border border-[#DA9C72]/30">Not Linked</span>
           </div>
-          <p class="text-[11px] text-slate-400">Connects directly to your MyWhoosh account. Automatically pulls your completed rides and workouts in the background with zero manual file dropping.</p>
+          <p class="text-[11px] text-white/50">Connects directly to your MyWhoosh account. Automatically pulls your completed rides and workouts in the background with zero manual file dropping.</p>
           
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <span class="text-[11px] text-slate-400">MyWhoosh Email / Username</span>
-              <input id="settingMyWhooshEmail" type="email" placeholder="rider@example.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-emerald-500">
+              <span class="text-[11px] text-white/40">MyWhoosh Email / Username</span>
+              <input id="settingMyWhooshEmail" type="email" placeholder="rider@example.com" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 focus:outline-none focus:border-[#62CA77] text-xs">
             </div>
             <div>
-              <span class="text-[11px] text-slate-400">MyWhoosh Password</span>
-              <input id="settingMyWhooshPassword" type="password" placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-emerald-500">
+              <span class="text-[11px] text-white/40">MyWhoosh Password</span>
+              <input id="settingMyWhooshPassword" type="password" placeholder="••••••••" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 focus:outline-none focus:border-[#62CA77] text-xs">
             </div>
           </div>
 
           <div class="pt-2 flex items-center justify-between gap-3">
-            <button type="button" onclick="testMyWhooshConnection()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition flex items-center gap-1.5">
+            <button type="button" onclick="testMyWhooshConnection()" class="px-4 py-2 bg-[#62CA77] hover:bg-[#52B967] text-[#0F1115] font-bold rounded-full transition flex items-center gap-1.5 active:scale-95 shadow-sm">
               <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
               <span>Test Connection & Authenticate</span>
             </button>
-            <span id="lastMyWhooshSyncLabel" class="text-[11px] text-slate-500">Never synced</span>
+            <span id="lastMyWhooshSyncLabel" class="text-[11px] text-white/40">Never synced</span>
           </div>
         </div>
 
         <!-- Zwift Cloud Connection Card -->
-        <div id="zwiftSettingsCard" class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+        <div id="zwiftSettingsCard" class="space-y-3 bg-[#12151A] p-4 rounded-2xl border border-white/[0.06]">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <i data-lucide="cloud" class="w-4 h-4 text-orange-400"></i>
-              <label class="font-bold text-slate-200">Zwift Cloud Connection (Direct OAuth)</label>
+              <i data-lucide="cloud" class="w-4 h-4 text-[#DA9C72]"></i>
+              <label class="font-bold text-white">Zwift Cloud Connection (Direct OAuth)</label>
             </div>
-            <span id="settingsZwiftBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Not Linked</span>
+            <span id="settingsZwiftBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#DA9C72]/15 text-[#DA9C72] border border-[#DA9C72]/30">Not Linked</span>
           </div>
-          <p class="text-[11px] text-slate-400">Connects directly to your Zwift account via companion service. Automatically fetches completed activities and calculates ride TSS for dynamic coaching.</p>
+          <p class="text-[11px] text-white/50">Connects directly to your Zwift account via companion service. Automatically fetches completed activities and calculates ride TSS for dynamic coaching.</p>
           
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <span class="text-[11px] text-slate-400">Zwift Username / Email</span>
-              <input id="settingZwiftUsername" type="text" placeholder="zwifter@example.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-orange-500">
+              <span class="text-[11px] text-white/40">Zwift Username / Email</span>
+              <input id="settingZwiftUsername" type="text" placeholder="zwifter@example.com" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 focus:outline-none focus:border-[#DA9C72] text-xs">
             </div>
             <div>
-              <span class="text-[11px] text-slate-400">Zwift Password</span>
-              <input id="settingZwiftPassword" type="password" placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1 focus:outline-none focus:border-orange-500">
+              <span class="text-[11px] text-white/40">Zwift Password</span>
+              <input id="settingZwiftPassword" type="password" placeholder="••••••••" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 focus:outline-none focus:border-[#DA9C72] text-xs">
             </div>
           </div>
 
           <div class="pt-2 flex items-center justify-between gap-3">
-            <button type="button" onclick="testZwiftConnection()" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg transition flex items-center gap-1.5">
+            <button type="button" onclick="testZwiftConnection()" class="px-4 py-2 bg-[#DA9C72] hover:bg-[#CA8C62] text-[#0F1115] font-bold rounded-full transition flex items-center gap-1.5 active:scale-95 shadow-sm">
               <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
               <span>Test Connection & Authenticate</span>
             </button>
-            <span id="lastZwiftSyncLabel" class="text-[11px] text-slate-500">Never synced</span>
+            <span id="lastZwiftSyncLabel" class="text-[11px] text-white/40">Never synced</span>
           </div>
         </div>
 
-
-
         <!-- Coaching Mode & Training Load Strategy -->
-        <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+        <div class="space-y-3 bg-[#12151A] p-4 rounded-2xl border border-white/[0.06]">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <i data-lucide="brain-circuit" class="w-4 h-4 text-indigo-400"></i>
-              <label class="font-bold text-slate-200">Coaching Mode & Volume Strategy</label>
+              <i data-lucide="brain-circuit" class="w-4 h-4 text-[#7DB6CC]"></i>
+              <label class="font-bold text-white">Coaching Mode & Volume Strategy</label>
             </div>
-            <span id="coachingModeBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Autonomous Active</span>
+            <span id="coachingModeBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#7DB6CC]/15 text-[#7DB6CC] border border-[#7DB6CC]/30">Autonomous Active</span>
           </div>
 
-          <p class="text-[11px] text-slate-400">Choose whether the AI Coach independently calculates optimal durations and TSS, or adheres to fixed weekly caps.</p>
+          <p class="text-[11px] text-white/50">Choose whether the AI Coach independently calculates optimal durations and TSS, or adheres to fixed weekly caps.</p>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-            <label class="flex items-start gap-2.5 p-3 rounded-lg border border-indigo-500/40 bg-indigo-950/20 cursor-pointer hover:border-indigo-400 transition" id="modeCardAutonomous">
-              <input type="radio" name="coaching_mode" value="autonomous" id="modeAutonomous" checked onchange="toggleCoachingModeUI()" class="mt-0.5 text-indigo-500 focus:ring-indigo-400">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <label class="flex items-start gap-2.5 p-3.5 rounded-2xl border border-[#7DB6CC]/40 bg-[#1B447A]/25 cursor-pointer hover:border-[#7DB6CC] transition" id="modeCardAutonomous">
+              <input type="radio" name="coaching_mode" value="autonomous" id="modeAutonomous" checked onchange="toggleCoachingModeUI()" class="mt-0.5 text-[#7DB6CC] focus:ring-[#7DB6CC]">
               <div>
-                <div class="font-bold text-slate-200 flex items-center gap-1.5">
+                <div class="font-bold text-white flex items-center gap-1.5">
                   <span>Autonomous AI Coach</span>
-                  <span class="text-[9px] px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded uppercase font-semibold">Recommended</span>
+                  <span class="text-[9px] px-2 py-0.5 bg-[#7DB6CC]/20 text-[#7DB6CC] rounded-full uppercase font-bold">Recommended</span>
                 </div>
-                <p class="text-[10px] text-slate-400 mt-1 leading-normal">AI determines workout duration, individual session TSS, and weekly load dynamically from your recent ride fatigue and race targets.</p>
+                <p class="text-[10px] text-white/50 mt-1 leading-normal">AI determines workout duration, individual session TSS, and weekly load dynamically from your recent ride fatigue and race targets.</p>
               </div>
             </label>
 
-            <label class="flex items-start gap-2.5 p-3 rounded-lg border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-slate-700 transition" id="modeCardTargetDriven">
-              <input type="radio" name="coaching_mode" value="target_driven" id="modeTargetDriven" onchange="toggleCoachingModeUI()" class="mt-0.5 text-indigo-500 focus:ring-indigo-400">
+            <label class="flex items-start gap-2.5 p-3.5 rounded-2xl border border-white/[0.06] bg-[#1A1E24]/60 cursor-pointer hover:border-white/20 transition" id="modeCardTargetDriven">
+              <input type="radio" name="coaching_mode" value="target_driven" id="modeTargetDriven" onchange="toggleCoachingModeUI()" class="mt-0.5 text-[#7DB6CC] focus:ring-[#7DB6CC]">
               <div>
-                <div class="font-bold text-slate-200">Custom Target Limits</div>
-                <p class="text-[10px] text-slate-400 mt-1 leading-normal">Manually specify hard targets for weekly hours and TSS (e.g. strict time budget constraints).</p>
+                <div class="font-bold text-white">Custom Target Limits</div>
+                <p class="text-[10px] text-white/50 mt-1 leading-normal">Manually specify hard targets for weekly hours and TSS (e.g. strict time budget constraints).</p>
               </div>
             </label>
           </div>
 
           <!-- Target inputs container (Visible only in Custom Target Limits mode) -->
-          <div id="targetInputsContainer" class="space-y-2 pt-2 border-t border-slate-900 hidden">
-            <div class="grid grid-cols-2 gap-2">
+          <div id="targetInputsContainer" class="space-y-2 pt-2 border-t border-white/[0.06] hidden">
+            <div class="grid grid-cols-2 gap-2.5">
               <div>
-                <span class="text-[11px] text-slate-400">Target Weekly Hours</span>
-                <input id="settingTargetHours" type="number" step="0.5" placeholder="e.g. 5.0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1">
+                <span class="text-[11px] text-white/40">Target Weekly Hours</span>
+                <input id="settingTargetHours" type="number" step="0.5" placeholder="e.g. 5.0" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 text-xs">
               </div>
               <div>
-                <span class="text-[11px] text-slate-400">Target Weekly TSS</span>
-                <input id="settingTargetTss" type="number" placeholder="e.g. 300" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1">
+                <span class="text-[11px] text-white/40">Target Weekly TSS</span>
+                <input id="settingTargetTss" type="number" placeholder="e.g. 300" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 text-xs">
               </div>
             </div>
             
             <!-- TSS Explainer Box -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 text-[11px] text-slate-400 space-y-1">
-              <div class="flex items-center gap-1.5 font-bold text-sky-400">
+            <div class="bg-[#1A1E24] border border-white/[0.06] rounded-2xl p-3 text-[11px] text-white/50 space-y-1">
+              <div class="flex items-center gap-1.5 font-bold text-[#7DB6CC]">
                 <i data-lucide="info" class="w-3.5 h-3.5"></i>
                 <span>TSS (Training Stress Score) Reference</span>
               </div>
@@ -854,120 +898,126 @@
         </div>
 
         <!-- Athlete Profile -->
-        <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
-          <label class="font-bold text-slate-200">Athlete Profile & Capacity</label>
-          <div class="grid grid-cols-3 gap-2">
+        <div class="space-y-3 bg-[#12151A] p-4 rounded-2xl border border-white/[0.06]">
+          <label class="font-bold text-white">Athlete Profile & Capacity</label>
+          <div class="grid grid-cols-3 gap-2.5">
             <div>
-              <span class="text-[11px] text-slate-400">FTP (Watts)</span>
-              <input id="settingFtp" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1">
+              <span class="text-[11px] text-white/40">FTP (Watts)</span>
+              <input id="settingFtp" type="number" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 text-xs">
             </div>
             <div>
-              <span class="text-[11px] text-slate-400">Max HR (bpm)</span>
-              <input id="settingMaxHr" type="number" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1">
+              <span class="text-[11px] text-white/40">Max HR (bpm)</span>
+              <input id="settingMaxHr" type="number" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 text-xs">
             </div>
             <div>
-              <span class="text-[11px] text-slate-400">Weight (kg)</span>
-              <input id="settingWeight" type="number" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1">
+              <span class="text-[11px] text-white/40">Weight (kg)</span>
+              <input id="settingWeight" type="number" step="0.5" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 text-xs">
             </div>
           </div>
 
           <div>
-            <span class="text-[11px] text-slate-400">Available Riding Days (comma separated)</span>
-            <input id="settingAvailableDays" type="text" placeholder="Tuesday, Thursday, Saturday, Sunday" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1">
+            <span class="text-[11px] text-white/40">Available Riding Days (comma separated)</span>
+            <input id="settingAvailableDays" type="text" placeholder="Tuesday, Thursday, Saturday, Sunday" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 text-xs">
           </div>
 
           <div>
-            <span class="text-[11px] text-slate-400">Primary Goal</span>
-            <input id="settingPrimaryGoal" type="text" placeholder="e.g. 100km Gran Fondo, FTP Build" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white mt-1">
+            <span class="text-[11px] text-white/40">Primary Goal</span>
+            <input id="settingPrimaryGoal" type="text" placeholder="e.g. 100km Gran Fondo, FTP Build" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 text-xs">
           </div>
         </div>
 
       </div>
 
-      <div class="p-4 border-t border-slate-800 bg-slate-950/60 flex justify-end gap-2 text-xs">
-        <button onclick="closeSettingsModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition">Cancel</button>
-        <button onclick="saveSettings()" class="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition">Save Changes</button>
+      <div class="p-4 border-t border-white/[0.06] bg-[#12151A]/60 flex justify-end gap-2 text-xs">
+        <button onclick="closeSettingsModal()" class="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 rounded-full font-semibold transition active:scale-95">Cancel</button>
+        <button onclick="saveSettings()" class="px-5 py-2 bg-[#7DB6CC] hover:bg-[#6CA5BB] text-[#0F1115] font-bold rounded-full transition active:scale-95 shadow-sm">Save Changes</button>
       </div>
     </div>
   </div>
 
   <!-- SYSTEM LOGS MODAL -->
-  <div id="logsModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh]">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+  <div id="logsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-[#1A1E24] border border-white/[0.08] rounded-[28px] max-w-3xl w-full p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh]">
+      <!-- Drag handle indicator -->
+      <div class="w-10 h-1 bg-white/20 rounded-full mx-auto mb-1"></div>
+      <div class="flex items-center justify-between border-b border-white/[0.06] pb-3">
         <div class="flex items-center gap-2">
-          <i data-lucide="terminal" class="w-5 h-5 text-sky-400"></i>
+          <i data-lucide="terminal" class="w-5 h-5 text-[#7DB6CC]"></i>
           <h3 class="font-bold text-base text-white">System & Debug Logs</h3>
         </div>
         <div class="flex items-center gap-2">
-          <button onclick="fetchSystemLogs()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg transition flex items-center gap-1.5 border border-slate-700">
+          <button onclick="fetchSystemLogs()" class="px-3.5 py-1.5 bg-white/[0.08] hover:bg-white/[0.14] text-xs font-semibold text-white/90 rounded-full transition flex items-center gap-1.5 border border-white/[0.06] active:scale-95">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
             <span>Refresh</span>
           </button>
-          <button onclick="closeLogsModal()" class="text-slate-400 hover:text-white transition">
+          <button onclick="closeLogsModal()" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white/60 hover:text-white flex items-center justify-center transition active:scale-95">
             <i data-lucide="x" class="w-5 h-5"></i>
           </button>
         </div>
       </div>
-      <div id="systemLogsContent" class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-[11px] text-slate-300 h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+      <div id="systemLogsContent" class="bg-[#12151A] border border-white/[0.06] rounded-2xl p-4 font-mono text-[11px] text-white/80 h-96 overflow-y-auto whitespace-pre-wrap leading-relaxed">
         Loading logs...
       </div>
-      <div class="flex items-center justify-between text-xs text-slate-500 pt-1">
+      <div class="flex items-center justify-between text-xs text-white/40 pt-1">
         <span>Live backend container logs (WhooshCoach)</span>
-        <button onclick="closeLogsModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition">Close</button>
+        <button onclick="closeLogsModal()" class="px-4 py-1.5 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 font-semibold rounded-full transition active:scale-95">Close</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: ADD EVENT / TARGET RACE / WORKOUT -->
-  <div id="addEventModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+  <div id="addEventModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-[#1A1E24] border border-white/[0.08] rounded-[28px] max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <!-- Drag handle indicator -->
+      <div class="w-10 h-1 bg-white/20 rounded-full mx-auto mb-1"></div>
+      <div class="flex items-center justify-between border-b border-white/[0.06] pb-3">
         <div class="flex items-center gap-2">
-          <i data-lucide="trophy" class="w-5 h-5 text-amber-400"></i>
+          <i data-lucide="trophy" class="w-5 h-5 text-[#FFD723]"></i>
           <h3 id="addEventModalTitle" class="font-bold text-base text-white">Add Target Race / Calendar Event</h3>
         </div>
-        <button onclick="closeAddEventModal()" class="text-slate-400 hover:text-white transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button onclick="closeAddEventModal()" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white/60 hover:text-white flex items-center justify-center transition active:scale-95">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
       </div>
 
       <!-- Event Category Switcher -->
-      <div class="flex rounded-lg bg-slate-950 p-1 border border-slate-800">
-        <button type="button" id="tabAddRace" onclick="switchAddEventType('race')" class="flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition bg-amber-500 text-slate-950 shadow-sm flex items-center justify-center gap-1.5">
+      <div class="flex rounded-full bg-[#12151A] p-1 border border-white/[0.06]">
+        <button type="button" id="tabAddRace" onclick="switchAddEventType('race')" class="flex-1 py-1.5 px-3.5 rounded-full text-xs font-bold transition bg-[#FFD723] text-[#0F1115] shadow-sm flex items-center justify-center gap-1.5 active:scale-95">
           <i data-lucide="trophy" class="w-3.5 h-3.5"></i>
           <span>Target Race</span>
         </button>
-        <button type="button" id="tabAddOutdoor" onclick="switchAddEventType('outdoor')" class="flex-1 py-1.5 px-3 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+        <button type="button" id="tabAddOutdoor" onclick="switchAddEventType('outdoor')" class="flex-1 py-1.5 px-3.5 rounded-full text-xs font-medium text-white/50 hover:text-white transition flex items-center justify-center gap-1.5 active:scale-95">
           <i data-lucide="navigation" class="w-3.5 h-3.5"></i>
           <span>Outdoor Ride</span>
         </button>
-        <button type="button" id="tabAddWorkout" onclick="switchAddEventType('workout')" class="flex-1 py-1.5 px-3 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+        <button type="button" id="tabAddWorkout" onclick="switchAddEventType('workout')" class="flex-1 py-1.5 px-3.5 rounded-full text-xs font-medium text-white/50 hover:text-white transition flex items-center justify-center gap-1.5 active:scale-95">
           <i data-lucide="activity" class="w-3.5 h-3.5"></i>
           <span>Indoor Ride</span>
         </button>
-        <button type="button" id="tabAddRest" onclick="switchAddEventType('rest')" class="flex-1 py-1.5 px-3 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+        <button type="button" id="tabAddRest" onclick="switchAddEventType('rest')" class="flex-1 py-1.5 px-3.5 rounded-full text-xs font-medium text-white/50 hover:text-white transition flex items-center justify-center gap-1.5 active:scale-95">
           <i data-lucide="coffee" class="w-3.5 h-3.5"></i>
           <span>Rest Day</span>
         </button>
       </div>
 
-      <form id="addEventForm" onsubmit="submitAddEvent(event)" class="space-y-3 text-xs">
+      <form id="addEventForm" onsubmit="submitAddEvent(event)" class="space-y-3.5 text-xs">
         <input type="hidden" id="addEventType" value="race">
 
         <!-- Title / Race Name -->
         <div>
-          <label class="block font-medium text-slate-300 mb-1" id="addEventNameLabel">Race Name</label>
-          <input id="addEventTitle" type="text" required placeholder="e.g. Cape Town Cycle Tour" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
+          <label class="block font-medium text-white/80 mb-1.5" id="addEventNameLabel">Race Name</label>
+          <input id="addEventTitle" type="text" required placeholder="e.g. Cape Town Cycle Tour" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#FFD723] text-xs">
         </div>
 
         <!-- Date & Priority (if Race) -->
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block font-medium text-slate-300 mb-1">Date</label>
-            <input id="addEventDate" type="date" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
+            <label class="block font-medium text-white/80 mb-1.5">Date</label>
+            <input id="addEventDate" type="date" required class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#FFD723] text-xs">
           </div>
           <div id="racePriorityGroup">
-            <label class="block font-medium text-slate-300 mb-1">Race Priority</label>
-            <select id="addRacePriority" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
+            <label class="block font-medium text-white/80 mb-1.5">Race Priority</label>
+            <select id="addRacePriority" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#FFD723] text-xs">
               <option value="A" selected>🏆 A-Race (Peak Goal & Taper)</option>
               <option value="B">🏁 B-Race (Secondary / Tune-Up)</option>
               <option value="C">🎖️ C-Race (Training / Hard Ride)</option>
@@ -978,8 +1028,8 @@
         <!-- Race Type & Distance (if Race) -->
         <div id="raceDetailsGroup" class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block font-medium text-slate-300 mb-1">Discipline / Type</label>
-            <select id="addRaceType" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
+            <label class="block font-medium text-white/80 mb-1.5">Discipline / Type</label>
+            <select id="addRaceType" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#FFD723] text-xs">
               <option value="Gran Fondo" selected>Gran Fondo / Sportive</option>
               <option value="Road Race">Road Race</option>
               <option value="Criterium">Criterium</option>
@@ -991,33 +1041,33 @@
             </select>
           </div>
           <div>
-            <label class="block font-medium text-slate-300 mb-1">Target Distance (km)</label>
-            <input id="addRaceDistance" type="number" step="0.1" placeholder="e.g. 109" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
+            <label class="block font-medium text-white/80 mb-1.5">Target Distance (km)</label>
+            <input id="addRaceDistance" type="number" step="0.1" placeholder="e.g. 109" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#FFD723] text-xs">
           </div>
         </div>
 
         <!-- Duration & Est TSS -->
         <div id="metricsGroup" class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block font-medium text-slate-300 mb-1">Estimated Duration (mins)</label>
-            <input id="addEventDuration" type="number" value="180" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
+            <label class="block font-medium text-white/80 mb-1.5">Estimated Duration (mins)</label>
+            <input id="addEventDuration" type="number" value="180" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#FFD723] text-xs">
           </div>
           <div>
-            <label class="block font-medium text-slate-300 mb-1">Planned TSS</label>
-            <input id="addEventTss" type="number" value="180" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500">
-            <p id="tssRaceHint" class="text-[10px] text-slate-500 mt-1">💡 100km Road: ~180–240 | Criterium: ~70–90 | Gran Fondo: ~260+</p>
+            <label class="block font-medium text-white/80 mb-1.5">Planned TSS</label>
+            <input id="addEventTss" type="number" value="180" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#FFD723] text-xs">
+            <p id="tssRaceHint" class="text-[10px] text-white/40 mt-1">💡 100km Road: ~180–240 | Criterium: ~70–90 | Gran Fondo: ~260+</p>
           </div>
         </div>
 
         <!-- Strategy / Notes -->
         <div>
-          <label class="block font-medium text-slate-300 mb-1">Strategy, Goals, or Athlete Notes</label>
-          <textarea id="addEventNotes" rows="2" placeholder="e.g. Target sub-3 hours. Conserve energy for the final climb." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-amber-500"></textarea>
+          <label class="block font-medium text-white/80 mb-1.5">Strategy, Goals, or Athlete Notes</label>
+          <textarea id="addEventNotes" rows="2" placeholder="e.g. Target sub-3 hours. Conserve energy for the final climb." class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#FFD723] text-xs"></textarea>
         </div>
 
-        <div class="pt-2 flex justify-end gap-2 border-t border-slate-800">
-          <button type="button" onclick="closeAddEventModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition">Cancel</button>
-          <button type="submit" id="btnSubmitAddEvent" class="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm">
+        <div class="pt-2 flex justify-end gap-2 border-t border-white/[0.06]">
+          <button type="button" onclick="closeAddEventModal()" class="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 rounded-full font-semibold transition text-xs active:scale-95">Cancel</button>
+          <button type="submit" id="btnSubmitAddEvent" class="px-5 py-2 bg-[#FFD723] hover:bg-[#EEC61F] text-[#0F1115] font-bold rounded-full transition flex items-center gap-1.5 shadow-sm active:scale-95 text-xs">
             <i data-lucide="check" class="w-4 h-4"></i>
             <span>Add to Calendar</span>
           </button>
@@ -1027,25 +1077,29 @@
   </div>
 
   <!-- MODAL: ADD NEW ATHLETE -->
-  <div id="newAthleteModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+  <div id="newAthleteModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-[#1A1E24] border border-white/[0.08] rounded-[28px] max-w-md w-full p-6 shadow-2xl flex flex-col gap-4">
+      <!-- Drag handle indicator -->
+      <div class="w-10 h-1 bg-white/20 rounded-full mx-auto mb-1"></div>
+      <div class="flex items-center justify-between border-b border-white/[0.06] pb-3">
         <div class="flex items-center gap-2">
-          <i data-lucide="user-plus" class="w-5 h-5 text-sky-400"></i>
+          <i data-lucide="user-plus" class="w-5 h-5 text-[#7DB6CC]"></i>
           <h3 class="font-bold text-base text-white">Add New Athlete Profile</h3>
         </div>
-        <button onclick="closeNewAthleteModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button onclick="closeNewAthleteModal()" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white/60 hover:text-white flex items-center justify-center transition active:scale-95">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
       </div>
 
       <div class="space-y-3 text-xs">
         <div>
-          <label class="block font-medium text-slate-300 mb-1">Athlete Name</label>
-          <input id="newAthleteName" type="text" placeholder="e.g. Mom, Dave, Sarah" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
+          <label class="block font-medium text-white/80 mb-1.5">Athlete Name</label>
+          <input id="newAthleteName" type="text" placeholder="e.g. Mom, Dave, Sarah" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#7DB6CC] text-xs">
         </div>
 
         <div>
-          <label class="block font-medium text-slate-300 mb-1">Primary Cycling Platform</label>
-          <select id="newAthletePlatform" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-sky-500">
+          <label class="block font-medium text-white/80 mb-1.5">Primary Cycling Platform</label>
+          <select id="newAthletePlatform" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white focus:outline-none focus:border-[#7DB6CC] text-xs">
             <option value="zwift" selected>Zwift (Companion API & .ZWO Export)</option>
             <option value="mywhoosh">MyWhoosh (Free Cloud Sync)</option>
             <option value="both">Both Platforms</option>
@@ -1054,28 +1108,28 @@
 
         <div class="grid grid-cols-3 gap-2">
           <div>
-            <label class="block font-medium text-slate-400 text-[11px] mb-1">FTP (Watts)</label>
-            <input id="newAthleteFtp" type="number" value="150" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+            <label class="block font-medium text-white/40 text-[11px] mb-1">FTP (Watts)</label>
+            <input id="newAthleteFtp" type="number" value="150" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2 text-white text-xs">
           </div>
           <div>
-            <label class="block font-medium text-slate-400 text-[11px] mb-1">Max HR</label>
-            <input id="newAthleteMaxHr" type="number" value="175" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+            <label class="block font-medium text-white/40 text-[11px] mb-1">Max HR</label>
+            <input id="newAthleteMaxHr" type="number" value="175" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2 text-white text-xs">
           </div>
           <div>
-            <label class="block font-medium text-slate-400 text-[11px] mb-1">Weight (kg)</label>
-            <input id="newAthleteWeight" type="number" step="0.5" value="65.0" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white">
+            <label class="block font-medium text-white/40 text-[11px] mb-1">Weight (kg)</label>
+            <input id="newAthleteWeight" type="number" step="0.5" value="65.0" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2 text-white text-xs">
           </div>
         </div>
 
         <div>
-          <label class="block font-medium text-slate-300 mb-1">Primary Training Goal</label>
-          <input id="newAthleteGoal" type="text" value="Cardio Fitness & Group Rides" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white">
+          <label class="block font-medium text-white/80 mb-1.5">Primary Training Goal</label>
+          <input id="newAthleteGoal" type="text" value="Cardio Fitness & Group Rides" class="w-full bg-[#12151A] border border-white/[0.08] rounded-2xl p-2.5 text-white text-xs">
         </div>
       </div>
 
-      <div class="pt-3 border-t border-slate-800 flex justify-end gap-2 text-xs">
-        <button onclick="closeNewAthleteModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition">Cancel</button>
-        <button onclick="createAthleteFromModal()" class="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm">
+      <div class="pt-3 border-t border-white/[0.06] flex justify-end gap-2 text-xs">
+        <button onclick="closeNewAthleteModal()" class="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 rounded-full font-semibold transition active:scale-95">Cancel</button>
+        <button onclick="createAthleteFromModal()" class="px-5 py-2 bg-[#7DB6CC] hover:bg-[#6CA5BB] text-[#0F1115] font-bold rounded-full transition flex items-center gap-1.5 shadow-sm active:scale-95">
           <i data-lucide="check" class="w-3.5 h-3.5"></i>
           <span>Create Profile</span>
         </button>
@@ -1084,9 +1138,9 @@
   </div>
 
   <!-- TOAST NOTIFICATION CONTAINER -->
-  <div id="toast" class="fixed bottom-5 right-5 z-50 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none bg-slate-800 border border-slate-700 text-white text-xs px-4 py-3 rounded-xl shadow-xl flex items-center gap-2">
-    <i id="toastIcon" data-lucide="info" class="w-4 h-4 text-sky-400"></i>
-    <span id="toastMessage">Notification message</span>
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none bg-[#1A1E24]/95 backdrop-blur-xl border border-white/[0.12] text-white text-xs px-5 py-3 rounded-full shadow-2xl flex items-center gap-2.5">
+    <i id="toastIcon" data-lucide="info" class="w-4 h-4 text-[#7DB6CC]"></i>
+    <span id="toastMessage" class="font-medium">Notification message</span>
   </div>
 
   <!-- App Logic -->

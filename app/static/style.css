@@ -1,113 +1,241 @@
-/* Custom styling for WhooshCoach */
+/* ==========================================================================
+   WHOOSHCOACH - CASHEW DESIGN SYSTEM (MATERIAL YOU / M3 AESTHETIC)
+   Inspired by jameskokoska/Cashew:
+   • Deep obsidian & warm charcoal canvas surfaces (#0F1115, #1A1E24, #222730)
+   • Cashew Signature Pastel Palette (Ice Blue #7DB6CC, Mint #62CA77, Coral #DA7272, Amber #DA9C72, Periwinkle #8395FF, Gold #FFD723)
+   • Extra-rounded organic curves (26px-28px card radius, 9999px pills)
+   • Tactile scale interactions (active:scale-95) & frosted elevation
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 :root {
-  --bg-main: #0f172a;
-  --bg-card: #1e293b;
-  --bg-card-hover: #334155;
-  --border-card: #334155;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --accent-cyan: #06b6d4;
-  --accent-blue: #3b82f6;
-  --accent-green: #10b981;
-  --accent-yellow: #eab308;
-  --accent-orange: #f97316;
-  --accent-red: #ef4444;
-  --accent-purple: #a855f7;
+  /* Cashew Signature Material You (M3) Dark Theme Surfaces */
+  --cashew-bg: #0F1115;
+  --cashew-surface: #1A1E24;
+  --cashew-surface-high: #222730;
+  --cashew-surface-highest: #2B313D;
+  --cashew-border: rgba(255, 255, 255, 0.07);
+  --cashew-border-hover: rgba(255, 255, 255, 0.14);
+  
+  /* Cashew Signature Pastels */
+  --cashew-primary: #7DB6CC;          /* Cashew Signature Ice / Cerulean Blue */
+  --cashew-primary-dark: #1B447A;     /* Cashew Deep Sapphire */
+  --cashew-primary-hover: #92C6DA;
+  --cashew-primary-container: rgba(125, 182, 204, 0.14);
+  
+  --cashew-green: #62CA77;            /* Income / GO / Mint */
+  --cashew-green-container: rgba(98, 202, 119, 0.14);
+  
+  --cashew-red: #DA7272;              /* Expense / SKIP / Coral */
+  --cashew-red-container: rgba(218, 114, 114, 0.14);
+  
+  --cashew-orange: #DA9C72;           /* Warning / MODIFY / Amber */
+  --cashew-orange-container: rgba(218, 156, 114, 0.14);
+  
+  --cashew-yellow: #FFD723;           /* Star / A-Race / Gold */
+  --cashew-purple: #C084FC;           /* Anaerobic / Violet */
+  --cashew-blue: #8395FF;             /* Tempo / Periwinkle */
+  
+  /* Text */
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.65);
+  --text-muted: rgba(255, 255, 255, 0.40);
+
+  /* FullCalendar Tokens */
+  --fc-page-bg-color: #1A1E24;
+  --fc-neutral-bg-color: #0F1115;
+  --fc-list-event-hover-bg-color: #222730;
+  --fc-theme-standard-border-color: rgba(255, 255, 255, 0.07);
 }
 
 body {
-  background-color: var(--bg-main);
+  background-color: var(--cashew-bg);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: -0.01em;
 }
 
-/* FullCalendar Customizations for Dark Theme */
+/* ==========================================================================
+   TACTILE CASHEW BUTTONS & CARDS
+   ========================================================================== */
+.cashew-card {
+  background-color: var(--cashew-surface);
+  border: 1px solid var(--cashew-border);
+  border-radius: 26px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cashew-card:hover {
+  border-color: var(--cashew-border-hover);
+}
+
+.cashew-pill-btn {
+  border-radius: 9999px;
+  font-weight: 700;
+  transition: all 0.15s ease-out;
+}
+
+.cashew-pill-btn:active {
+  transform: scale(0.96);
+}
+
+/* ==========================================================================
+   FULLCALENDAR M3 / CASHEW STYLING
+   ========================================================================== */
 .fc {
-  --fc-page-bg-color: #1e293b;
-  --fc-neutral-bg-color: #0f172a;
-  --fc-list-event-hover-bg-color: #334155;
-  --fc-theme-standard-border-color: #334155;
-  color: #f8fafc;
+  font-family: inherit;
+  color: #FFFFFF;
 }
 
 .fc-theme-standard th {
-  background-color: #0f172a;
-  padding: 8px 0;
-  color: #94a3b8;
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.75rem;
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  padding: 10px 0 !important;
+  color: var(--text-secondary) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.05em !important;
+}
+
+.fc-theme-standard td {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.fc-scrollgrid {
+  border: none !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
 }
 
 .fc-daygrid-day-number {
-  color: #cbd5e1;
-  font-size: 0.85rem;
-  padding: 4px 8px !important;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 10px !important;
 }
 
 .fc-day-today {
-  background-color: rgba(59, 130, 246, 0.08) !important;
+  background-color: rgba(125, 182, 204, 0.06) !important;
 }
 
+.fc-day-today .fc-daygrid-day-number {
+  color: #0F1115 !important;
+  background-color: var(--cashew-primary);
+  border-radius: 9999px;
+  padding: 3px 8px !important;
+  margin: 4px;
+  display: inline-block;
+  box-shadow: 0 2px 8px rgba(125, 182, 204, 0.35);
+}
+
+/* Event Pills (Cashew Rounded Pill Style) */
 .fc-event {
-  border-radius: 6px !important;
-  padding: 2px 6px !important;
-  font-size: 0.8rem !important;
-  font-weight: 500 !important;
+  border-radius: 9999px !important;
+  padding: 3px 10px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 0.1s ease, filter 0.1s ease;
+  border-width: 1px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease !important;
+  margin-top: 3px !important;
+  margin-bottom: 3px !important;
 }
 
 .fc-event:hover {
-  filter: brightness(1.15);
-  transform: translateY(-1px);
+  filter: brightness(1.12);
+  transform: translateY(-1.5px) scale(1.01);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+}
+
+.fc-event:active {
+  transform: scale(0.97);
+}
+
+/* FullCalendar Header Toolbar */
+.fc .fc-toolbar {
+  margin-bottom: 1.25rem !important;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .fc .fc-toolbar-title {
-  font-size: 1.25rem !important;
-  font-weight: 700 !important;
-  color: #f8fafc;
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  color: #FFFFFF !important;
+  letter-spacing: -0.02em !important;
 }
 
+/* FullCalendar Navigation & View Buttons (Pill Shapes) */
 .fc .fc-button-primary {
-  background-color: #334155 !important;
-  border-color: #475569 !important;
-  color: #f8fafc !important;
-  font-size: 0.85rem !important;
-  font-weight: 500 !important;
-  border-radius: 6px !important;
+  background-color: var(--cashew-surface-high) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #FFFFFF !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  border-radius: 9999px !important;
+  padding: 6px 14px !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
 }
 
 .fc .fc-button-primary:hover {
-  background-color: #475569 !important;
+  background-color: var(--cashew-surface-highest) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.fc .fc-button-primary:active {
+  transform: scale(0.95) !important;
 }
 
 .fc .fc-button-active {
-  background-color: #2563eb !important;
-  border-color: #2563eb !important;
+  background-color: var(--cashew-primary) !important;
+  border-color: var(--cashew-primary) !important;
+  color: #0F1115 !important;
+  font-weight: 800 !important;
 }
 
-/* Zone Tags */
-.zone-tag-z1 { background-color: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
-.zone-tag-z2 { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
-.zone-tag-z3 { background-color: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid #eab308; }
-.zone-tag-z4 { background-color: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid #f97316; }
-.zone-tag-z5 { background-color: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
-.zone-tag-z6 { background-color: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7; }
+.fc-button-group {
+  border-radius: 9999px;
+  overflow: hidden;
+  background-color: var(--cashew-bg);
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
 
-/* Custom Scrollbars */
+.fc-button-group .fc-button {
+  margin: 0 !important;
+  border: none !important;
+}
+
+/* ==========================================================================
+   ZONE & CHIP PILLS (CASHEW PASTELS)
+   ========================================================================== */
+.zone-tag-z1 { background-color: rgba(98, 202, 119, 0.15); color: #62CA77; border: 1px solid rgba(98, 202, 119, 0.30); }
+.zone-tag-z2 { background-color: rgba(125, 182, 204, 0.15); color: #7DB6CC; border: 1px solid rgba(125, 182, 204, 0.30); }
+.zone-tag-z3 { background-color: rgba(131, 149, 255, 0.15); color: #8395FF; border: 1px solid rgba(131, 149, 255, 0.30); }
+.zone-tag-z4 { background-color: rgba(218, 156, 114, 0.15); color: #DA9C72; border: 1px solid rgba(218, 156, 114, 0.30); }
+.zone-tag-z5 { background-color: rgba(218, 114, 114, 0.15); color: #DA7272; border: 1px solid rgba(218, 114, 114, 0.30); }
+.zone-tag-z6 { background-color: rgba(192, 132, 252, 0.15); color: #C084FC; border: 1px solid rgba(192, 132, 252, 0.30); }
+.zone-tag-race { background-color: rgba(255, 215, 35, 0.16); color: #FFD723; border: 1px solid rgba(255, 215, 35, 0.35); }
+.zone-tag-outdoor { background-color: rgba(251, 146, 60, 0.15); color: #FB923C; border: 1px solid rgba(251, 146, 60, 0.30); }
+
+/* ==========================================================================
+   CASHEW SMOOTH SCROLLBARS
+   ========================================================================== */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: var(--cashew-bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgba(255, 255, 255, 0.22);
 }

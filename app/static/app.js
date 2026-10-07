@@ -329,13 +329,13 @@ function switchAddEventType(type) {
   const titleInput = document.getElementById('addEventTitle');
   const submitBtn = document.getElementById('btnSubmitAddEvent');
 
-  const activeClass = "flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition shadow-sm flex items-center justify-center gap-1.5";
-  const inactiveClass = "flex-1 py-1.5 px-3 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
+  const activeClass = "flex-1 py-1.5 px-3.5 rounded-full text-xs font-bold transition shadow-sm flex items-center justify-center gap-1.5 active:scale-95";
+  const inactiveClass = "flex-1 py-1.5 px-3.5 rounded-full text-xs font-medium text-white/50 hover:text-white transition flex items-center justify-center gap-1.5 active:scale-95";
 
-  tabRace.className = type === 'race' ? `${activeClass} bg-amber-500 text-slate-950` : inactiveClass;
-  if (tabOutdoor) tabOutdoor.className = type === 'outdoor' ? `${activeClass} bg-orange-500 text-slate-950` : inactiveClass;
-  tabWorkout.className = type === 'workout' ? `${activeClass} bg-sky-600 text-white` : inactiveClass;
-  tabRest.className = type === 'rest' ? `${activeClass} bg-slate-700 text-white` : inactiveClass;
+  tabRace.className = type === 'race' ? `${activeClass} bg-[#FFD723] text-[#0F1115]` : inactiveClass;
+  if (tabOutdoor) tabOutdoor.className = type === 'outdoor' ? `${activeClass} bg-[#DA9C72] text-[#0F1115]` : inactiveClass;
+  tabWorkout.className = type === 'workout' ? `${activeClass} bg-[#7DB6CC] text-[#0F1115]` : inactiveClass;
+  tabRest.className = type === 'rest' ? `${activeClass} bg-white/[0.14] text-white` : inactiveClass;
 
   if (type === 'race') {
     racePrio.classList.remove('hidden');
@@ -343,28 +343,28 @@ function switchAddEventType(type) {
     metrics.classList.remove('hidden');
     titleLabel.innerText = "Race / Event Name";
     titleInput.placeholder = "e.g. Cape Town Cycle Tour";
-    submitBtn.className = "px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm";
+    submitBtn.className = "px-5 py-2 bg-[#FFD723] hover:bg-[#EEC61F] text-[#0F1115] font-bold rounded-full transition flex items-center gap-1.5 shadow-sm active:scale-95 text-xs";
   } else if (type === 'outdoor') {
     racePrio.classList.add('hidden');
     raceDetails.classList.add('hidden');
     metrics.classList.remove('hidden');
     titleLabel.innerText = "Outdoor Ride Title";
     titleInput.placeholder = "e.g. Saturday Group Ride (Strava)";
-    submitBtn.className = "px-5 py-2 bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm";
+    submitBtn.className = "px-5 py-2 bg-[#DA9C72] hover:bg-[#CA8C62] text-[#0F1115] font-bold rounded-full transition flex items-center gap-1.5 shadow-sm active:scale-95 text-xs";
   } else if (type === 'workout') {
     racePrio.classList.add('hidden');
     raceDetails.classList.add('hidden');
     metrics.classList.remove('hidden');
     titleLabel.innerText = "Workout Title";
     titleInput.placeholder = "e.g. 40/20s #1 or Sweetspot";
-    submitBtn.className = "px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm";
+    submitBtn.className = "px-5 py-2 bg-[#7DB6CC] hover:bg-[#6CA5BB] text-[#0F1115] font-bold rounded-full transition flex items-center gap-1.5 shadow-sm active:scale-95 text-xs";
   } else if (type === 'rest') {
     racePrio.classList.add('hidden');
     raceDetails.classList.add('hidden');
     metrics.classList.add('hidden');
     titleLabel.innerText = "Rest Day Label";
     titleInput.value = "Rest & Active Recovery";
-    submitBtn.className = "px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm";
+    submitBtn.className = "px-5 py-2 bg-white/[0.14] hover:bg-white/[0.20] text-white font-bold rounded-full transition flex items-center gap-1.5 shadow-sm active:scale-95 text-xs";
   }
 }
 
@@ -587,19 +587,19 @@ async function generatePlan() {
       if (modelBadge) {
         if (data.fallback_used) {
           modelBadge.innerText = `Fallback: ${data.model_used}`;
-          modelBadge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+          modelBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#DA9C72]/15 text-[#DA9C72] border border-[#DA9C72]/30";
         } else {
           modelBadge.innerText = data.model_used || 'gemini-3.5-flash';
-          modelBadge.className = "px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20";
+          modelBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#7DB6CC]/15 text-[#7DB6CC] border border-[#7DB6CC]/30";
         }
       }
 
       const metaEl = document.getElementById('planSuccessMeta');
       if (metaEl) {
         metaEl.innerHTML = `
-          <span class="px-2 py-0.5 bg-slate-900 border border-slate-800 rounded font-semibold text-white">⚡ ${data.total_planned_tss || 0} Total TSS</span>
-          <span class="px-2 py-0.5 bg-slate-900 border border-slate-800 rounded font-semibold text-white">⏱️ ${(data.total_planned_hours || 0).toFixed(1)} Hours</span>
-          <span class="px-2 py-0.5 bg-slate-900 border border-slate-800 rounded font-semibold text-white">📅 ${data.days} Days (${data.start_date})</span>
+          <span class="px-3 py-1 bg-[#12151A] border border-white/[0.08] rounded-full font-semibold text-white">⚡ ${data.total_planned_tss || 0} Total TSS</span>
+          <span class="px-3 py-1 bg-[#12151A] border border-white/[0.08] rounded-full font-semibold text-white">⏱️ ${(data.total_planned_hours || 0).toFixed(1)} Hours</span>
+          <span class="px-3 py-1 bg-[#12151A] border border-white/[0.08] rounded-full font-semibold text-white">📅 ${data.days} Days (${data.start_date})</span>
         `;
       }
 
@@ -614,20 +614,20 @@ async function generatePlan() {
           listEl.innerHTML = data.events.map(ev => {
             const isRace = ev.event_type === 'race' || (ev.title && ev.title.includes('[A-Race]'));
             const isRest = ev.status === 'rest' || (ev.title && ev.title.includes('Rest Day'));
-            let badgeBg = "bg-sky-500/10 text-sky-400 border-sky-500/20";
-            if (isRace) badgeBg = "bg-amber-500/10 text-amber-400 border-amber-500/20";
-            else if (isRest) badgeBg = "bg-slate-800 text-slate-400 border-slate-700";
+            let badgeBg = "bg-[#7DB6CC]/15 text-[#7DB6CC] border-[#7DB6CC]/30";
+            if (isRace) badgeBg = "bg-[#FFD723]/15 text-[#FFD723] border-[#FFD723]/30";
+            else if (isRest) badgeBg = "bg-white/[0.08] text-white/50 border-white/[0.06]";
 
             return `
-              <div class="flex items-center justify-between p-2 rounded-lg bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 transition">
+              <div class="flex items-center justify-between p-2.5 rounded-2xl bg-[#12151A] border border-white/[0.06] hover:border-white/20 transition">
                 <div class="flex items-center gap-2.5 overflow-hidden">
-                  <span class="font-mono text-[11px] text-slate-400 font-semibold shrink-0">${ev.date}</span>
-                  <span class="font-medium text-slate-200 truncate">${ev.title}</span>
+                  <span class="font-mono text-[11px] text-white/40 font-semibold shrink-0">${ev.date}</span>
+                  <span class="font-medium text-white truncate">${ev.title}</span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                  <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold border ${badgeBg}">${ev.primary_zone || 'Z2'}</span>
-                  <span class="text-slate-400 text-[11px]">${ev.planned_duration_minutes}m</span>
-                  <span class="text-sky-400 font-bold text-[11px] w-12 text-right">${ev.planned_tss} TSS</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeBg}">${ev.primary_zone || 'Z2'}</span>
+                  <span class="text-white/40 text-[11px]">${ev.planned_duration_minutes}m</span>
+                  <span class="text-[#7DB6CC] font-bold text-[11px] w-12 text-right">${ev.planned_tss} TSS</span>
                 </div>
               </div>
             `;
@@ -703,7 +703,7 @@ function sendQuickPrompt(promptText) {
 function appendUserMessage(text) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
-  div.className = "bg-sky-600 text-white rounded-xl p-3 ml-6 self-end shadow-sm";
+  div.className = "bg-[#7DB6CC] text-[#0F1115] font-semibold rounded-2xl rounded-tr-sm p-3.5 ml-6 self-end shadow-sm";
   div.innerText = text;
   container.appendChild(div);
   scrollToChatBottom();
@@ -712,7 +712,7 @@ function appendUserMessage(text) {
 function appendCoachMessage(text) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
-  div.className = "bg-slate-800 border border-slate-700/80 rounded-xl p-3 text-slate-200 mr-6 shadow-sm leading-relaxed";
+  div.className = "bg-[#1A1E24] border border-white/[0.08] rounded-2xl rounded-tl-sm p-3.5 text-white/90 mr-6 shadow-sm leading-relaxed";
   div.innerText = text;
   container.appendChild(div);
   scrollToChatBottom();
@@ -725,7 +725,7 @@ function scrollToChatBottom() {
 
 function clearChatHistory() {
   document.getElementById('chatMessages').innerHTML = `
-    <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-3 text-slate-300">
+    <div class="bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-3.5 text-white/70">
       Chat history cleared. How can I help you with your training?
     </div>
   `;
@@ -740,13 +740,13 @@ function switchSidebarTab(tab) {
   const tabLib = document.getElementById('tabLibrary');
 
   if (tab === 'coach') {
-    btnCoach.className = "flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition bg-sky-600 text-white shadow-sm flex items-center justify-center gap-1.5";
-    btnLib.className = "flex-1 py-1.5 px-3 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
+    btnCoach.className = "flex-1 py-1.5 px-3.5 rounded-full text-xs font-bold transition bg-[#7DB6CC] text-[#0F1115] shadow-sm flex items-center justify-center gap-1.5 active:scale-95";
+    btnLib.className = "flex-1 py-1.5 px-3.5 rounded-full text-xs font-medium text-white/50 hover:text-white transition flex items-center justify-center gap-1.5 active:scale-95";
     tabCoach.classList.remove('hidden');
     tabLib.classList.add('hidden');
   } else {
-    btnLib.className = "flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition bg-sky-600 text-white shadow-sm flex items-center justify-center gap-1.5";
-    btnCoach.className = "flex-1 py-1.5 px-3 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5";
+    btnLib.className = "flex-1 py-1.5 px-3.5 rounded-full text-xs font-bold transition bg-[#7DB6CC] text-[#0F1115] shadow-sm flex items-center justify-center gap-1.5 active:scale-95";
+    btnCoach.className = "flex-1 py-1.5 px-3.5 rounded-full text-xs font-medium text-white/50 hover:text-white transition flex items-center justify-center gap-1.5 active:scale-95";
     tabLib.classList.remove('hidden');
     tabCoach.classList.add('hidden');
     fetchLibraryWorkouts();
@@ -788,17 +788,17 @@ async function fetchLibraryWorkouts() {
 
     data.workouts.forEach(w => {
       const card = document.createElement('div');
-      card.className = "bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg p-2.5 transition flex flex-col gap-1 cursor-pointer";
+      card.className = "bg-[#12151A] border border-white/[0.06] hover:border-white/20 rounded-2xl p-3 transition flex flex-col gap-1 cursor-pointer active:scale-[0.99]";
       card.onclick = () => scheduleWorkoutOnCalendar(w);
 
       card.innerHTML = `
         <div class="flex items-center justify-between gap-1">
-          <span class="font-bold text-slate-200 truncate">${w.title}</span>
-          <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-sky-400 shrink-0">${w.primary_zone.split(' - ')[0] || 'Z'}</span>
+          <span class="font-bold text-white truncate">${w.title}</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1A1E24] text-[#7DB6CC] border border-white/[0.08] shrink-0">${w.primary_zone.split(' - ')[0] || 'Z'}</span>
         </div>
-        <div class="flex justify-between text-[11px] text-slate-400">
+        <div class="flex justify-between text-[11px] text-white/40">
           <span>${w.duration}</span>
-          <span>${w.tss} TSS</span>
+          <span class="text-[#7DB6CC] font-semibold">${w.tss} TSS</span>
           <span>IF ${w.intensity_factor}</span>
         </div>
       `;
@@ -928,25 +928,25 @@ function toggleCoachingModeUI() {
     if (targetContainer) targetContainer.classList.add('hidden');
     if (modeBadge) {
       modeBadge.innerText = "Autonomous Active";
-      modeBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20";
+      modeBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#7DB6CC]/15 text-[#7DB6CC] border border-[#7DB6CC]/30";
     }
     if (cardAuto) {
-      cardAuto.className = "flex items-start gap-2.5 p-3 rounded-lg border border-indigo-500/40 bg-indigo-950/20 cursor-pointer hover:border-indigo-400 transition";
+      cardAuto.className = "flex items-start gap-2.5 p-3.5 rounded-2xl border border-[#7DB6CC]/40 bg-[#1B447A]/25 cursor-pointer hover:border-[#7DB6CC] transition";
     }
     if (cardTarget) {
-      cardTarget.className = "flex items-start gap-2.5 p-3 rounded-lg border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-slate-700 transition";
+      cardTarget.className = "flex items-start gap-2.5 p-3.5 rounded-2xl border border-white/[0.06] bg-[#1A1E24]/60 cursor-pointer hover:border-white/20 transition";
     }
   } else {
     if (targetContainer) targetContainer.classList.remove('hidden');
     if (modeBadge) {
       modeBadge.innerText = "Custom Targets Active";
-      modeBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+      modeBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#DA9C72]/15 text-[#DA9C72] border border-[#DA9C72]/30";
     }
     if (cardAuto) {
-      cardAuto.className = "flex items-start gap-2.5 p-3 rounded-lg border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-slate-700 transition";
+      cardAuto.className = "flex items-start gap-2.5 p-3.5 rounded-2xl border border-white/[0.06] bg-[#1A1E24]/60 cursor-pointer hover:border-white/20 transition";
     }
     if (cardTarget) {
-      cardTarget.className = "flex items-start gap-2.5 p-3 rounded-lg border border-amber-500/40 bg-amber-950/20 cursor-pointer hover:border-amber-400 transition";
+      cardTarget.className = "flex items-start gap-2.5 p-3.5 rounded-2xl border border-[#DA9C72]/40 bg-[#DA9C72]/15 cursor-pointer hover:border-[#DA9C72] transition";
     }
   }
 }
@@ -1354,40 +1354,40 @@ function updateAthleteUIState() {
   if (currentAthletePlatform === 'zwift') {
     if (syncTxt) syncTxt.innerText = "Sync Zwift";
     if (syncBtn) {
-      syncBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white transition shadow-sm hover:shadow-orange-500/20";
+      syncBtn.className = "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-[#DA9C72] text-[#0F1115] hover:bg-[#CA8C62] transition shadow-sm active:scale-95";
     }
     if (platBadge) platBadge.classList.remove('hidden');
     if (a.is_zwift_connected) {
-      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-[#62CA77]";
       if (platTxt) platTxt.innerText = "Zwift: Ready";
     } else {
-      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-amber-400";
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-[#DA9C72]";
       if (platTxt) platTxt.innerText = "Zwift: Setup Needed";
     }
   } else if (currentAthletePlatform === 'both') {
     if (syncTxt) syncTxt.innerText = "Sync Cloud (All)";
     if (syncBtn) {
-      syncBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white transition shadow-sm hover:shadow-indigo-500/20";
+      syncBtn.className = "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-[#8395FF] text-[#0F1115] hover:bg-[#7284EE] transition shadow-sm active:scale-95";
     }
     if (platBadge) platBadge.classList.remove('hidden');
     if (a.is_mywhoosh_connected || a.is_zwift_connected) {
-      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-[#62CA77]";
       if (platTxt) platTxt.innerText = "Cloud: Ready";
     } else {
-      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-amber-400";
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-[#DA9C72]";
       if (platTxt) platTxt.innerText = "Cloud: Setup Needed";
     }
   } else {
     if (syncTxt) syncTxt.innerText = "Sync MyWhoosh";
     if (syncBtn) {
-      syncBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition shadow-sm hover:shadow-emerald-500/20";
+      syncBtn.className = "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-[#62CA77] text-[#0F1115] hover:bg-[#52B967] transition shadow-sm active:scale-95";
     }
     if (platBadge) platBadge.classList.remove('hidden');
     if (a.is_mywhoosh_connected) {
-      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-[#62CA77]";
       if (platTxt) platTxt.innerText = "MyWhoosh: Ready";
     } else {
-      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-amber-400";
+      if (platDot) platDot.className = "w-2 h-2 rounded-full bg-[#DA9C72]";
       if (platTxt) platTxt.innerText = "MyWhoosh: Setup Needed";
     }
   }
@@ -1492,11 +1492,11 @@ function showToast(message, type = 'info') {
 
   toastMsg.innerText = message;
   if (type === 'success') {
-    toastIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+    toastIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#62CA77]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
   } else if (type === 'error') {
-    toastIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>`;
+    toastIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#DA7272]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>`;
   } else {
-    toastIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/></svg>`;
+    toastIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#7DB6CC]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/></svg>`;
   }
 
   toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');

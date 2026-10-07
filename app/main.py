@@ -323,50 +323,53 @@ def get_calendar_events(
     formatted = []
     
     zone_colors = {
-        "Z1 - Recovery": "#10b981",    # Emerald
-        "Z2 - Endurance": "#3b82f6",   # Blue
-        "Z3 - Tempo": "#eab308",       # Yellow
-        "Z4 - Threshold": "#f97316",   # Orange
-        "Z5 - VO2Max": "#ef4444",      # Red
-        "Z6 - Anaerobic": "#a855f7",   # Purple
-        "Free Ride": "#06b6d4",        # Cyan
-        "Rest Day": "#6b7280",         # Gray
-        "Unplanned Ride": "#ec4899",   # Pink
-        "Outdoor Ride": "#fc4c02"      # Strava Orange
+        "Z1 - Recovery": {"bg": "#1C3825", "border": "#62CA77"},
+        "Z2 - Endurance": {"bg": "#1A3542", "border": "#7DB6CC"},
+        "Z3 - Tempo": {"bg": "#222754", "border": "#8395FF"},
+        "Z4 - Threshold": {"bg": "#3D2A1C", "border": "#DA9C72"},
+        "Z5 - VO2Max": {"bg": "#3D1D21", "border": "#DA7272"},
+        "Z6 - Anaerobic": {"bg": "#341E47", "border": "#C084FC"},
+        "Free Ride": {"bg": "#173742", "border": "#58A4C2"},
+        "Rest Day": {"bg": "#1E222A", "border": "#3D434E"},
+        "Unplanned Ride": {"bg": "#3D1E30", "border": "#F472B6"},
+        "Outdoor Ride": {"bg": "#3D2314", "border": "#FB923C"}
     }
 
     for ev in events:
-        color = zone_colors.get(ev.primary_zone, "#3b82f6")
-        border_color = color
+        c_spec = zone_colors.get(ev.primary_zone, {"bg": "#1A3542", "border": "#7DB6CC"})
+        color = c_spec["bg"]
+        border_color = c_spec["border"]
         
         if ev.event_type == "race":
             prio = (ev.race_priority or "A").upper()
             if prio == "A":
                 title_prefix = "🏆 [A-Race] "
-                color = "#d97706"
-                border_color = "#f59e0b"
+                color = "#3D3310"
+                border_color = "#FFD723"
             elif prio == "B":
                 title_prefix = "🏁 [B-Race] "
-                color = "#7c3aed"
-                border_color = "#a78bfa"
+                color = "#341E47"
+                border_color = "#C084FC"
             else:
                 title_prefix = "🎖️ [C-Race] "
-                color = "#0284c7"
-                border_color = "#38bdf8"
+                color = "#1A3542"
+                border_color = "#7DB6CC"
         elif ev.event_type == "outdoor_ride" or ev.primary_zone == "Outdoor Ride":
             title_prefix = "🚴‍♂️ [Outdoor] "
-            color = "#fc4c02" # Strava orange
-            border_color = "#e34000"
+            color = "#3D2314"
+            border_color = "#FB923C"
         elif ev.status == "completed":
             title_prefix = "✓ "
+            color = "#1C3825"
+            border_color = "#62CA77"
         elif ev.status == "skipped":
             title_prefix = "✕ "
-            color = "#4b5563"
-            border_color = "#4b5563"
+            color = "#242830"
+            border_color = "#4B5563"
         elif ev.status == "rest" or ev.event_type == "rest":
             title_prefix = "☕ "
-            color = "#374151"
-            border_color = "#374151"
+            color = "#1E222A"
+            border_color = "#3D434E"
         else:
             title_prefix = ""
 
