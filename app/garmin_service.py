@@ -66,7 +66,10 @@ class GarminService:
             if err:
                 return {"status": "error", "message": err}
             
-            display_name = client.get_full_name() or client.username
+            try:
+                display_name = client.get_full_name() or getattr(client, "username", None) or email.split("@")[0]
+            except Exception:
+                display_name = getattr(client, "username", None) or email.split("@")[0]
             return {
                 "status": "success",
                 "message": f"Successfully connected to Garmin Connect as '{display_name}'!",
@@ -347,8 +350,12 @@ class GarminService:
         adaptation_message = None
         if new_activities_count > 0 and latest_act:
             try:
-                from app.gemini_coach import evaluate_and_adapt_plan
-                adaptation_message = evaluate_and_adapt_plan(db, latest_act, profile)
+                import asyncio
+                from app.gemini_coach import adapt_calendar_after_activity
+                matched_ev = db.query(CalendarEvent).filter(CalendarEvent.activity_id == latest_act.id).first()
+                if matched_ev:
+                    res = asyncio.run(adapt_calendar_after_activity(db, matched_ev, latest_act, athlete_id=profile.id))
+                    adaptation_message = res.get("debrief")
             except Exception as e:
                 logger.error(f"[Garmin] Adaptation error: {e}")
 
