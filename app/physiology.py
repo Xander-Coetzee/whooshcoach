@@ -216,7 +216,10 @@ def compute_readiness_decision(
     acwr: float,
     recent_consecutive_hard_days: int = 0,
     has_active_injury_or_illness: bool = False,
-    yesterday_outdoor_overload: bool = False
+    yesterday_outdoor_overload: bool = False,
+    hrv_status: Optional[str] = None,
+    sleep_score: Optional[int] = None,
+    resting_hr: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Evaluates athlete readiness deterministically (Section 11 Protocol).
@@ -273,6 +276,25 @@ def compute_readiness_decision(
     if yesterday_outdoor_overload:
         score -= 15
         flags.append("Significant outdoor volume/climbing fatigue from yesterday.")
+
+    # Check 6: Biometric Recovery (Garmin HRV, Sleep Score, Resting HR)
+    if hrv_status:
+        hrv_norm = hrv_status.upper()
+        if hrv_norm in ["UNBALANCED", "LOW", "POOR"]:
+            score -= 20
+            flags.append(f"Garmin HRV status is {hrv_status}: Parasympathetic recovery suppressed.")
+        elif hrv_norm == "BALANCED":
+            flags.append("Garmin HRV status: Balanced autonomic nervous system.")
+
+    if sleep_score is not None:
+        if sleep_score < 50:
+            score -= 20
+            flags.append(f"Poor sleep quality ({sleep_score}/100): Neuro-muscular repair incomplete.")
+        elif sleep_score < 65:
+            score -= 10
+            flags.append(f"Moderate sleep score ({sleep_score}/100).")
+        elif sleep_score >= 80:
+            flags.append(f"High-quality sleep ({sleep_score}/100): Full cellular recovery.")
 
     # Determine final readiness gate
     score = max(10, min(100, score))

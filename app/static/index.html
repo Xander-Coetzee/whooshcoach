@@ -106,6 +106,12 @@
           <span id="syncPlatformText">Sync MyWhoosh</span>
         </button>
 
+        <!-- Garmin Quick Sync Button (Outdoor Rides & Wellness) -->
+        <button id="btnSyncGarmin" onclick="syncGarminActivities()" class="cashew-pill-btn hidden flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold bg-[#1A1E24] hover:bg-[#222730] text-white/90 hover:text-white transition border border-white/[0.08]" title="Sync outdoor rides & recovery biometrics from Garmin">
+          <i id="syncGarminIcon" data-lucide="watch" class="w-3.5 h-3.5 text-[#7DB6CC]"></i>
+          <span id="syncGarminText">Sync Garmin</span>
+        </button>
+
         <!-- Add Race / Target Event Button -->
         <button onclick="openAddEventModal('', 'race')" class="cashew-pill-btn flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-[#FFD723] to-[#DA9C72] hover:brightness-105 text-slate-950 transition shadow-sm shadow-[#FFD723]/20">
           <i data-lucide="trophy" class="w-3.5 h-3.5"></i>
@@ -844,6 +850,43 @@
               <span>Test Connection & Authenticate</span>
             </button>
             <span id="lastZwiftSyncLabel" class="text-[11px] text-white/40">Never synced</span>
+          </div>
+        </div>
+
+        <!-- Garmin Connect Integration Card (Outdoor Rides & Recovery Biometrics) -->
+        <div id="garminSettingsCard" class="space-y-3 bg-[#12151A] p-4 rounded-2xl border border-white/[0.06]">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i data-lucide="watch" class="w-4 h-4 text-[#7DB6CC]"></i>
+              <label class="font-bold text-white">Garmin Connect (Outdoor Rides & Biometrics)</label>
+            </div>
+            <span id="settingsGarminBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#DA9C72]/15 text-[#DA9C72] border border-[#DA9C72]/30">Not Linked</span>
+          </div>
+          <p class="text-[11px] text-white/50">Directly syncs outdoor rides (GPS, Watts, NP, HR, Distance, Elevation) and recovery biometrics (Overnight HRV, Sleep Score, Resting HR) without needing Strava or 3rd-party apps.</p>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <span class="text-[11px] text-white/40">Garmin Email</span>
+              <input id="settingGarminEmail" type="email" placeholder="athlete@example.com" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 focus:outline-none focus:border-[#7DB6CC] text-xs">
+            </div>
+            <div>
+              <span class="text-[11px] text-white/40">Garmin Password</span>
+              <input id="settingGarminPassword" type="password" placeholder="••••••••" class="w-full bg-[#1A1E24] border border-white/[0.08] rounded-2xl p-2.5 text-white mt-1 focus:outline-none focus:border-[#7DB6CC] text-xs">
+            </div>
+          </div>
+
+          <div class="pt-2 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="testGarminConnection()" class="px-4 py-2 bg-[#7DB6CC] hover:bg-[#6CA5BB] text-[#0F1115] font-bold rounded-full transition flex items-center gap-1.5 active:scale-95 shadow-sm text-xs">
+                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                <span>Test Garmin Login</span>
+              </button>
+              <button type="button" onclick="syncGarminActivities()" class="px-3.5 py-2 bg-white/[0.08] hover:bg-white/[0.14] text-white rounded-full font-semibold transition flex items-center gap-1.5 active:scale-95 text-xs">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Sync Garmin Rides</span>
+              </button>
+            </div>
+            <span id="lastGarminSyncLabel" class="text-[11px] text-white/40">Never synced</span>
           </div>
         </div>
 

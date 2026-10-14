@@ -92,6 +92,9 @@ class ProfileUpdate(BaseModel):
     # Zwift
     zwift_username: Optional[str] = None
     zwift_password: Optional[str] = None
+    # Garmin Connect
+    garmin_email: Optional[str] = None
+    garmin_password: Optional[str] = None
 
 class AthleteCreate(BaseModel):
     name: str
@@ -126,6 +129,11 @@ class GeminiTestRequest(BaseModel):
 class ZwiftTestRequest(BaseModel):
     athlete_id: Optional[int] = None
     username: Optional[str] = None
+    password: Optional[str] = None
+
+class GarminTestRequest(BaseModel):
+    athlete_id: Optional[int] = None
+    email: Optional[str] = None
     password: Optional[str] = None
 
 class EventCreate(BaseModel):
@@ -682,6 +690,49 @@ async def test_zwift_connection(req: Optional[ZwiftTestRequest] = None, athlete_
         db.commit()
     return {"success": True, "zwift_id": zwift_id, "message": f"Successfully authenticated with Zwift! (Profile ID: {zwift_id})"}
 
+# Specific Garmin Connect endpoints
+@app.post("/api/garmin/sync")
+async def manual_garmin_sync(athlete_id: int = Query(1), db: Session = Depends(get_db)):
+    """Synchronizes recent outdoor rides and daily health metrics (HRV, Sleep, Resting HR) from Garmin Connect."""
+    from app.garmin_service import garmin_service
+    profile = db.query(AthleteProfile).filter(AthleteProfile.id == athlete_id).first()
+    if not profile or not profile.garmin_email:
+        raise HTTPException(status_code=400, detail="Garmin email is not configured in Settings.")
+    
+    logger.info(f"Triggering manual Garmin sync for '{profile.garmin_email}'...")
+    res = await asyncio.to_thread(garmin_service.sync_activities_and_wellness, db, profile)
+    if res.get("status") == "error":
+        raise HTTPException(status_code=400, detail=res.get("message", "Garmin sync failed"))
+    return res
+
+@app.post("/api/garmin/test")
+async def test_garmin_connection(req: Optional[GarminTestRequest] = None, athlete_id: int = Query(1), db: Session = Depends(get_db)):
+    """Validates Garmin Connect login credentials and stores active session tokens."""
+    from app.garmin_service import garmin_service
+    aid = (req.athlete_id if req and req.athlete_id else None) or athlete_id
+    profile = db.query(AthleteProfile).filter(AthleteProfile.id == aid).first()
+    
+    email = (req.email if req and req.email else None) or (profile.garmin_email if profile else None)
+    password = (req.password if req and req.password else None) or (profile.garmin_password if profile else None)
+    
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Garmin email and password are required.")
+    
+    logger.info(f"Testing Garmin Connect authentication for '{email}'...")
+    res = await asyncio.to_thread(garmin_service.test_connection, email, password)
+    if res.get("status") != "success":
+        raise HTTPException(status_code=400, detail=res.get("message", "Garmin authentication failed"))
+    
+    if profile:
+        profile.garmin_email = email
+        if req and req.password:
+            profile.garmin_password = req.password
+        if res.get("tokens_json"):
+            profile.garmin_tokens = res.get("tokens_json")
+        db.commit()
+        
+    return res
+
 # ----------------- SYSTEM LOGS API -----------------
 
 @app.get("/api/system/logs")
@@ -723,7 +774,12 @@ def get_settings(athlete_id: int = Query(1), db: Session = Depends(get_db)):
         "zwift_username": profile.zwift_username or "",
         "has_zwift_password": bool(profile.zwift_password),
         "is_zwift_connected": bool(profile.zwift_token or (profile.zwift_username and profile.zwift_password)),
-        "last_zwift_sync": profile.last_zwift_sync
+        "last_zwift_sync": profile.last_zwift_sync,
+        # Garmin Connect
+        "garmin_email": profile.garmin_email or "",
+        "has_garmin_password": bool(profile.garmin_password),
+        "is_garmin_connected": bool(profile.garmin_tokens or (profile.garmin_email and profile.garmin_password)),
+        "last_garmin_sync": profile.last_garmin_sync
     }
 
 @app.post("/api/settings")
@@ -740,6 +796,8 @@ def update_settings(update: ProfileUpdate, athlete_id: int = Query(1), db: Sessi
         profile.mywhoosh_token = None
     if "zwift_password" in update_data and update_data["zwift_password"]:
         profile.zwift_token = None
+    if "garmin_password" in update_data and update_data["garmin_password"]:
+        profile.garmin_tokens = None
 
     for k, v in update_data.items():
         if k in ["target_weekly_hours", "target_weekly_tss"]:

@@ -134,6 +134,35 @@ class AthleteProfile(Base):
     zwift_id = Column(String(100), nullable=True)
     last_zwift_sync = Column(String(50), nullable=True)
 
+    # Garmin Connect credentials & sync state
+    garmin_email = Column(String(255), nullable=True)
+    garmin_password = Column(String(255), nullable=True)
+    garmin_tokens = Column(Text, nullable=True)
+    last_garmin_sync = Column(String(50), nullable=True)
+
+class DailyWellness(Base):
+    """
+    Daily physiological wellness and recovery metrics (from Garmin Connect / Section 11).
+    Tracks Resting Heart Rate, Heart Rate Variability (HRV), and Sleep Score.
+    """
+    __tablename__ = "daily_wellness"
+
+    id = Column(Integer, primary_key=True, index=True)
+    athlete_id = Column(Integer, ForeignKey("athlete_profile.id"), default=1, index=True)
+    date = Column(String(10), index=True) # YYYY-MM-DD
+    resting_hr = Column(Integer, nullable=True)
+    hrv_status = Column(String(50), nullable=True) # BALANCED, UNBALANCED, LOW, POOR
+    hrv_weekly_avg = Column(Float, nullable=True)
+    hrv_last_night_avg = Column(Float, nullable=True)
+    sleep_score = Column(Integer, nullable=True)
+    sleep_seconds = Column(Integer, nullable=True)
+    body_battery = Column(Integer, nullable=True)
+    stress_level = Column(Integer, nullable=True)
+    source = Column(String(50), default="garmin")
+    raw_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
 class CoachLog(Base):
     __tablename__ = "coach_logs"
 
@@ -187,7 +216,11 @@ def init_db():
             ("zwift_password", "VARCHAR(255)"),
             ("zwift_token", "TEXT"),
             ("zwift_id", "VARCHAR(100)"),
-            ("last_zwift_sync", "VARCHAR(50)")
+            ("last_zwift_sync", "VARCHAR(50)"),
+            ("garmin_email", "VARCHAR(255)"),
+            ("garmin_password", "VARCHAR(255)"),
+            ("garmin_tokens", "TEXT"),
+            ("last_garmin_sync", "VARCHAR(50)")
         ]:
             try:
                 conn.execute(text(f"ALTER TABLE athlete_profile ADD COLUMN {col} {col_type}"))

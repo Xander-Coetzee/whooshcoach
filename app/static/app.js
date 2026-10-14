@@ -1098,16 +1098,24 @@ async function loadSettings() {
       document.getElementById('settingZwiftPassword').placeholder = '•••••••• (Saved)';
     }
 
+    // Garmin settings
+    if (document.getElementById('settingGarminEmail')) {
+      document.getElementById('settingGarminEmail').value = s.garmin_email || '';
+    }
+    if (s.has_garmin_password && document.getElementById('settingGarminPassword')) {
+      document.getElementById('settingGarminPassword').placeholder = '•••••••• (Saved)';
+    }
+
     // MyWhoosh status badge in modal
     const mwModalBadge = document.getElementById('settingsMyWhooshBadge');
     if (s.is_mywhoosh_connected) {
       if (mwModalBadge) {
-        mwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        mwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-[#62CA77]/15 text-[#62CA77] border border-[#62CA77]/30";
         mwModalBadge.innerText = "Connected";
       }
     } else {
       if (mwModalBadge) {
-        mwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+        mwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-[#DA9C72]/15 text-[#DA9C72] border border-[#DA9C72]/30";
         mwModalBadge.innerText = "Not Linked";
       }
     }
@@ -1116,14 +1124,31 @@ async function loadSettings() {
     const zwModalBadge = document.getElementById('settingsZwiftBadge');
     if (s.is_zwift_connected) {
       if (zwModalBadge) {
-        zwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        zwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-[#62CA77]/15 text-[#62CA77] border border-[#62CA77]/30";
         zwModalBadge.innerText = "Connected";
       }
     } else {
       if (zwModalBadge) {
-        zwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+        zwModalBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-[#DA9C72]/15 text-[#DA9C72] border border-[#DA9C72]/30";
         zwModalBadge.innerText = "Not Linked";
       }
+    }
+
+    // Garmin status badge in modal & quick sync button
+    const garminBadge = document.getElementById('settingsGarminBadge');
+    const btnSyncGarmin = document.getElementById('btnSyncGarmin');
+    if (s.is_garmin_connected) {
+      if (garminBadge) {
+        garminBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-[#62CA77]/15 text-[#62CA77] border border-[#62CA77]/30";
+        garminBadge.innerText = "Connected";
+      }
+      if (btnSyncGarmin) btnSyncGarmin.classList.remove('hidden');
+    } else {
+      if (garminBadge) {
+        garminBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-[#DA9C72]/15 text-[#DA9C72] border border-[#DA9C72]/30";
+        garminBadge.innerText = "Not Linked";
+      }
+      if (btnSyncGarmin) btnSyncGarmin.classList.add('hidden');
     }
 
     if (s.last_mywhoosh_sync && document.getElementById('lastMyWhooshSyncLabel')) {
@@ -1131,6 +1156,9 @@ async function loadSettings() {
     }
     if (s.last_zwift_sync && document.getElementById('lastZwiftSyncLabel')) {
       document.getElementById('lastZwiftSyncLabel').innerText = `Last sync: ${s.last_zwift_sync}`;
+    }
+    if (s.last_garmin_sync && document.getElementById('lastGarminSyncLabel')) {
+      document.getElementById('lastGarminSyncLabel').innerText = `Last sync: ${s.last_garmin_sync}`;
     }
 
     updateAthleteUIState();
@@ -1185,6 +1213,14 @@ async function saveSettings(silent = false) {
   if (document.getElementById('settingZwiftPassword')) {
     const zwPass = document.getElementById('settingZwiftPassword').value.trim();
     if (zwPass) payload.zwift_password = zwPass;
+  }
+
+  if (document.getElementById('settingGarminEmail')) {
+    payload.garmin_email = document.getElementById('settingGarminEmail').value.trim();
+  }
+  if (document.getElementById('settingGarminPassword')) {
+    const garminPass = document.getElementById('settingGarminPassword').value.trim();
+    if (garminPass) payload.garmin_password = garminPass;
   }
 
   try {
@@ -1307,6 +1343,67 @@ async function testZwiftConnection() {
   } catch (e) {
     console.error("Test Zwift connection error:", e);
     showToast(`Network error testing Zwift: ${e.message}`, 'error');
+  }
+}
+
+async function testGarminConnection() {
+  await saveSettings(true);
+  showToast('Connecting to Garmin Connect...', 'info');
+
+  try {
+    const res = await fetch(`/api/garmin/test?athlete_id=${currentAthleteId}`, { method: 'POST' });
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+
+    if (res.ok && data && data.status === 'success') {
+      showToast(data.message || 'Garmin Connect connected successfully!', 'success');
+      await loadSettings();
+    } else {
+      const errMsg = (data && (data.detail || data.message || data.error)) || `Server returned status ${res.status}`;
+      showToast(`Garmin login: ${errMsg}`, 'error');
+    }
+  } catch (e) {
+    console.error("Test Garmin connection error:", e);
+    showToast(`Network error testing Garmin: ${e.message}`, 'error');
+  }
+}
+
+async function syncGarminActivities() {
+  const btn = document.getElementById('btnSyncGarmin');
+  const icon = document.getElementById('syncGarminIcon');
+  const txt = document.getElementById('syncGarminText');
+
+  if (btn) btn.disabled = true;
+  if (icon) icon.classList.add('animate-spin');
+  if (txt) txt.innerText = 'Syncing...';
+
+  showToast('Syncing outdoor rides & biometrics from Garmin Connect...', 'info');
+
+  try {
+    const res = await fetch(`/api/garmin/sync?athlete_id=${currentAthleteId}`, { method: 'POST' });
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+
+    if (res.ok && data && data.status === 'success') {
+      if (calendar) calendar.refetchEvents();
+      await loadStats();
+      await loadSettings();
+      showToast(data.message || 'Garmin rides synced successfully!', 'success');
+
+      if (data.adaptation) {
+        appendCoachMessage(`**Garmin Sync Complete!**\n\n${data.adaptation}`);
+      }
+    } else {
+      const errMsg = (data && (data.detail || data.message || data.error)) || `Server returned status ${res.status}`;
+      showToast(`Garmin sync: ${errMsg}`, 'error');
+    }
+  } catch (e) {
+    console.error("Garmin sync error:", e);
+    showToast(`Error syncing Garmin: ${e.message}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (icon) icon.classList.remove('animate-spin');
+    if (txt) txt.innerText = 'Sync Garmin';
   }
 }
 

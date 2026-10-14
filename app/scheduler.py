@@ -39,6 +39,16 @@ async def sync_all_athletes():
                 except Exception as e:
                     logger.error(f"[Background] Zwift sync error for '{profile.name}': {e}", exc_info=True)
 
+            # Sync Garmin Connect if credentials exist (Outdoor rides & Wellness)
+            if profile.garmin_email and profile.garmin_password:
+                try:
+                    from app.garmin_service import garmin_service
+                    logger.info(f"[Background] Syncing Garmin Connect for athlete '{profile.name}' (ID: {profile.id})...")
+                    res = await asyncio.to_thread(garmin_service.sync_activities_and_wellness, db, profile)
+                    logger.info(f"[Background] Athlete '{profile.name}' Garmin sync result: {res.get('status')}")
+                except Exception as e:
+                    logger.error(f"[Background] Garmin sync error for '{profile.name}': {e}", exc_info=True)
+
     except Exception as e:
         logger.error(f"Error during background multi-athlete sync: {e}", exc_info=True)
     finally:

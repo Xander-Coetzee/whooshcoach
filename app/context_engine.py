@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from app.database import AthleteProfile, AthleteDossier, CalendarEvent, RideActivity, Workout
+from app.database import AthleteProfile, AthleteDossier, CalendarEvent, RideActivity, Workout, DailyWellness
 from app.physiology import (
     calculate_power_zones,
     calculate_hr_zones,
@@ -171,6 +171,15 @@ def build_latest_state(db: Session, athlete_id: int = 1, as_of_date: Optional[st
     dossier = get_athlete_dossier(db, athlete_id=profile.id)
     has_active_injury = "active" in dossier.get("injury_and_health_notes", "").lower() and "none" not in dossier.get("injury_and_health_notes", "").lower()
     
+    # Query latest DailyWellness for athlete (HRV, Sleep, Resting HR)
+    recent_wellness = db.query(DailyWellness).filter(
+        DailyWellness.athlete_id == profile.id
+    ).order_by(DailyWellness.date.desc()).first()
+
+    hrv_stat = recent_wellness.hrv_status if recent_wellness else None
+    sleep_sc = recent_wellness.sleep_score if recent_wellness else None
+    rest_hr = recent_wellness.resting_hr if recent_wellness else None
+
     readiness = compute_readiness_decision(
         ctl=ctl,
         atl=atl,
@@ -178,7 +187,10 @@ def build_latest_state(db: Session, athlete_id: int = 1, as_of_date: Optional[st
         acwr=acwr,
         recent_consecutive_hard_days=consecutive_hard_days,
         has_active_injury_or_illness=has_active_injury,
-        yesterday_outdoor_overload=yesterday_outdoor_overload
+        yesterday_outdoor_overload=yesterday_outdoor_overload,
+        hrv_status=hrv_stat,
+        sleep_score=sleep_sc,
+        resting_hr=rest_hr
     )
     
     # 3. Last 14 Days Recent Activities (High-Signal Operational State)
@@ -195,11 +207,16 @@ def build_latest_state(db: Session, athlete_id: int = 1, as_of_date: Optional[st
     for a in recent_acts:
         dur_min = round(a.moving_time / 60, 1) if a.moving_time else 0.0
         act_date = a.start_date_local[:10] if a.start_date_local else (a.start_date[:10] if a.start_date else "Recent")
-        is_outdoor = (a.type == "Ride" or (a.id and "strava" in a.id))
+        is_outdoor = (a.type == "Ride" or (a.id and any(k in a.id for k in ["garmin", "strava"])))
         
         if is_outdoor:
             outdoor_count += 1
-            env_label = "Outdoor Road/Gravel [Strava]"
+            if a.id and "garmin" in a.id:
+                env_label = "Outdoor Road/Gravel [Garmin]"
+            elif a.id and "strava" in a.id:
+                env_label = "Outdoor Road/Gravel [Strava]"
+            else:
+                env_label = "Outdoor Road/Gravel"
         else:
             indoor_count += 1
             env_label = "Indoor Virtual [MyWhoosh]" if (a.id and "mw" in a.id) else "Indoor Virtual [Trainer]"
@@ -305,7 +322,16 @@ def build_latest_state(db: Session, athlete_id: int = 1, as_of_date: Optional[st
         },
         "recent_activities": recent_activities_data,
         "upcoming_calendar": upcoming_calendar_data,
-        "target_races": races_data
+        "target_races": races_data,
+        "wellness_recovery": {
+            "resting_hr": recent_wellness.resting_hr if recent_wellness else None,
+            "hrv_status": recent_wellness.hrv_status if recent_wellness else None,
+            "hrv_weekly_avg": recent_wellness.hrv_weekly_avg if recent_wellness else None,
+            "hrv_last_night_avg": recent_wellness.hrv_last_night_avg if recent_wellness else None,
+            "sleep_score": recent_wellness.sleep_score if recent_wellness else None,
+            "body_battery": recent_wellness.body_battery if recent_wellness else None,
+            "date": recent_wellness.date if recent_wellness else None
+        }
     }
 
 
@@ -314,14 +340,22 @@ def format_latest_state_for_prompt(state: Dict[str, Any]) -> str:
     ath = state["athlete_summary"]
     tl = state["training_load"]
     rd = state["readiness_decision"]
+    wel = state.get("wellness_recovery") or {}
     
     # Readiness badge
     readiness_block = (
         f"READINESS GATE: [{rd['decision'].upper()}] (Score: {rd['score']}/100, Status: {rd['status_color'].upper()})\n"
         f"- Physiological Form: CTL {tl['fitness_ctl']} (Fitness) | ATL {tl['fatigue_atl']} (Fatigue) | TSB {tl['form_tsb']:+.1f} (Form)\n"
         f"- Workload Ratio: Start-of-day ACWR = {tl['acwr_start_of_day']:.2f} (7d: {tl['acute_load_7d']} TSS/d, 28d: {tl['chronic_load_28d']} TSS/d)\n"
-        f"- Coach Diagnostic: {rd['reason']}\n"
     )
+    if wel.get("hrv_status") or wel.get("sleep_score") or wel.get("resting_hr"):
+        wel_parts = []
+        if wel.get("hrv_status"): wel_parts.append(f"HRV: {wel['hrv_status']}")
+        if wel.get("sleep_score"): wel_parts.append(f"Sleep Score: {wel['sleep_score']}/100")
+        if wel.get("resting_hr"): wel_parts.append(f"Resting HR: {wel['resting_hr']} bpm")
+        readiness_block += f"- Biometric Recovery [Garmin]: {', '.join(wel_parts)}\n"
+
+    readiness_block += f"- Coach Diagnostic: {rd['reason']}\n"
     if rd.get("flags"):
         readiness_block += "- Flags: " + "; ".join(rd["flags"]) + "\n"
     if rd.get("recommendations"):
