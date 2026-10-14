@@ -29,8 +29,19 @@ from app.context_engine import (
 
 logger = logging.getLogger("whooshcoach.coach")
 
-DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
-FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+FALLBACK_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-flash-lite-latest",
+    "gemini-flash-latest",
+    "gemini-3.1-flash-lite-preview",
+    "gemini-3.1-pro-preview",
+    "gemini-pro-latest"
+]
 
 
 # ---------------------------------------------------------------------------
@@ -58,15 +69,16 @@ def generate_content_with_fallback(
 ) -> Tuple[Any, str, bool]:
     """
     Calls client.models.generate_content using preferred_model.
-    If 429, 404, or 503 occurs, falls back to alternative models in FALLBACK_MODELS.
+    Gracefully cascades through all active candidate models upon 429, 404, 503, or any error.
+    Performs multi-pass retry with exponential backoff so the system never fails prematurely.
     Returns: (response, model_used, fallback_occurred)
     """
     model_alias_map = {
-        "gemini-3.6-flash": "gemini-3.5-flash",
-        "gemini-2.5-flash": "gemini-3.5-flash",
-        "gemini-2.0-flash": "gemini-3.5-flash",
-        "gemini-1.5-flash": "gemini-3.5-flash",
+        "gemini-2.5-flash": "gemini-3.5-flash-lite",
+        "gemini-2.0-flash": "gemini-3.5-flash-lite",
+        "gemini-1.5-flash": "gemini-3.5-flash-lite",
         "gemini-2.5-flash-lite": "gemini-3.5-flash-lite",
+        "gemini-2.0-flash-lite": "gemini-3.5-flash-lite",
     }
     normalized_preferred = model_alias_map.get(preferred_model, preferred_model)
 
@@ -76,40 +88,33 @@ def generate_content_with_fallback(
             candidates.append(m)
 
     last_error = None
-    for idx, model_name in enumerate(candidates):
-        for attempt in range(2):
-            try:
-                print(f"[Gemini] Querying model '{model_name}' (attempt {attempt+1})...", flush=True)
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=contents,
-                    config=config
-                )
-                fallback_occurred = (model_name != preferred_model)
-                if fallback_occurred:
-                    print(f"[Gemini] Fallback active: Successfully used '{model_name}' (preferred was '{preferred_model}').", flush=True)
-                return response, model_name, fallback_occurred
-            except Exception as e:
-                last_error = e
-                err_str = str(e).lower()
-                is_recoverable = any(code in err_str for code in [
-                    "429", "resource_exhausted", "quota", "rate_limit", "rate limit",
-                    "404", "not_found", "no longer available", "503", "unavailable", "overloaded"
-                ])
-                print(f"[Gemini] Model '{model_name}' error (attempt {attempt+1}): {e}", flush=True)
-                if "503" in err_str and attempt == 0:
-                    time.sleep(1.5)
-                    continue
-                break
+    for pass_num in range(2):
+        for idx, model_name in enumerate(candidates):
+            for attempt in range(2):
+                try:
+                    logger.info(f"[Gemini] Querying model '{model_name}' (pass {pass_num+1}, attempt {attempt+1})...")
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config=config
+                    )
+                    fallback_occurred = (model_name != preferred_model)
+                    if fallback_occurred:
+                        logger.info(f"[Gemini] Fallback active: Successfully used '{model_name}' (preferred was '{preferred_model}').")
+                    return response, model_name, fallback_occurred
+                except Exception as e:
+                    last_error = e
+                    err_str = str(e).lower()
+                    logger.warning(f"[Gemini] Model '{model_name}' error (attempt {attempt+1}): {e}")
+                    if ("503" in err_str or "unavailable" in err_str or "overloaded" in err_str) and attempt == 0:
+                        time.sleep(1.0)
+                        continue
+                    break
 
-        if idx < len(candidates) - 1:
-            next_model = candidates[idx + 1]
-            print(f"[Gemini] Falling back from '{model_name}' to '{next_model}'...", flush=True)
-            continue
-        else:
-            print(f"[Gemini API ERROR] All candidate models exhausted. Last error: {last_error}", flush=True)
-            raise last_error
+        if pass_num == 0:
+            time.sleep(1.5)
 
+    logger.error(f"[Gemini API ERROR] All candidate models exhausted. Last error: {last_error}")
     raise last_error
 
 
@@ -983,5 +988,81 @@ ATHLETE MESSAGE:
         return reply
 
     except Exception as e:
-        logger.error(f"Error in chat_with_coach: {e}")
-        return f"Coach is temporarily unavailable: {str(e)}"
+        logger.warning(f"Gemini API unreachable or exhausted ({e}). Triggering Section 11 deterministic coaching fallback...")
+        deterministic_reply = generate_deterministic_chat_response(db, user_message, profile, latest_state)
+        
+        # Save chat turn with deterministic fallback label
+        db.add(CoachLog(athlete_id=profile.id, role="user", message=user_message, context_type="chat"))
+        db.add(CoachLog(athlete_id=profile.id, role="assistant", message=deterministic_reply, context_type="chat_fallback"))
+        db.commit()
+        return deterministic_reply
+
+
+def generate_deterministic_chat_response(db: Session, user_message: str, profile: AthleteProfile, latest_state: Dict[str, Any]) -> str:
+    """
+    Deterministic Section 11 backup coaching engine.
+    Ensures the athlete always receives instant, actionable, scientifically sound coaching
+    and real MyWhoosh workout recommendations even if external AI APIs are unreachable.
+    """
+    msg_lower = user_message.lower()
+    ftp = profile.ftp or 220
+    ctl = latest_state.get('training_load', {}).get('fitness_ctl', 0.0)
+    tsb = latest_state.get('training_load', {}).get('form_tsb', 0.0)
+    decision = latest_state.get('readiness_decision', {}).get('decision', 'Go')
+
+    # Detect duration request
+    target_duration = 60
+    if "30 min" in msg_lower or "30m" in msg_lower or "half hour" in msg_lower or "short" in msg_lower:
+        target_duration = 30
+    elif "45 min" in msg_lower or "45m" in msg_lower:
+        target_duration = 45
+    elif "90 min" in msg_lower or "90m" in msg_lower:
+        target_duration = 90
+    elif "120 min" in msg_lower or "2 hour" in msg_lower or "long" in msg_lower:
+        target_duration = 120
+
+    # Detect zone / intent
+    target_zone = "Z4 - Sweet Spot"
+    if "sweetspot" in msg_lower or "sweet spot" in msg_lower:
+        target_zone = "Z4 - Sweet Spot"
+    elif "vo2" in msg_lower or "interval" in msg_lower or "hard" in msg_lower:
+        target_zone = "Z5 - VO2Max"
+    elif "threshold" in msg_lower or "ftp" in msg_lower:
+        target_zone = "Z4 - Threshold"
+    elif "endurance" in msg_lower or "zone 2" in msg_lower or "z2" in msg_lower or "base" in msg_lower:
+        target_zone = "Z2 - Endurance"
+    elif "recovery" in msg_lower or "easy" in msg_lower or "fatigued" in msg_lower or "tired" in msg_lower or decision == "Skip":
+        target_zone = "Z1 - Recovery"
+
+    # Query matching workout from SQLite
+    if target_duration <= 35:
+        w_query = db.query(Workout).filter(Workout.duration_minutes <= 36)
+    elif target_duration <= 50:
+        w_query = db.query(Workout).filter(Workout.duration_minutes >= 35, Workout.duration_minutes <= 55)
+    else:
+        w_query = db.query(Workout).filter(Workout.duration_minutes >= 50, Workout.duration_minutes <= 75)
+
+    # Filter by primary zone if possible
+    zone_keyword = target_zone.split(' - ')[-1]
+    zone_match = w_query.filter(Workout.primary_zone.ilike(f"%{zone_keyword}%")).first()
+    if not zone_match:
+        zone_match = w_query.first() or db.query(Workout).first()
+
+    w_title = zone_match.title if zone_match else "Sub Threshold #1"
+    w_dur = int(zone_match.duration_minutes) if zone_match else target_duration
+    w_tss = zone_match.tss if zone_match else int(target_duration * 0.9)
+    w_zone = zone_match.primary_zone if zone_match else target_zone
+
+    sst_min = int(round(ftp * 0.88))
+    sst_max = int(round(ftp * 0.94))
+    tempo_min = int(round(ftp * 0.76))
+    tempo_max = int(round(ftp * 0.90))
+
+    return f"""Your readiness gate is currently **{decision}** (**CTL {ctl:.1f}, TSB {tsb:+.1f}**), meaning you're primed for quality structured work.
+
+Head into MyWhoosh and load up **"{w_title}"** (approx. {w_dur} minutes, ~{w_tss} TSS, {w_zone}).
+
+This session delivers optimal training stimulus for your {w_dur}-minute window by targeting your working power zones (Sweet Spot: **{sst_min}–{sst_max} W**, Tempo: **{tempo_min}–{tempo_max} W** based on your **{ftp} W FTP**).
+
+Lock your cadence around 90–95 rpm, stay relaxed on the hoods, and focus on steady pedaling throughout the intervals. Execute with clean form!"""
+

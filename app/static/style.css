@@ -239,3 +239,47 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.22);
 }
+
+/* ==========================================================================
+   COACH MARKDOWN PROSE STYLES
+   ========================================================================== */
+.coach-markdown {
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.90);
+}
+.coach-markdown p {
+  margin-bottom: 0.75rem;
+}
+.coach-markdown p:last-child {
+  margin-bottom: 0;
+}
+.coach-markdown strong {
+  color: #FFFFFF;
+  font-weight: 700;
+}
+.coach-markdown ul, .coach-markdown ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+.coach-markdown li {
+  margin-bottom: 0.25rem;
+}
+.coach-markdown h1, .coach-markdown h2, .coach-markdown h3, .coach-markdown h4 {
+  color: #7DB6CC;
+  font-weight: 700;
+  margin-top: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+.coach-markdown code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.375rem;
+  font-size: 0.8em;
+  color: #7DB6CC;
+}
+.coach-markdown blockquote {
+  border-left: 3px solid #7DB6CC;
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+  color: rgba(255, 255, 255, 0.7);
+}

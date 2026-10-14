@@ -460,6 +460,20 @@ function showPlanView(viewName) {
   if (window.lucide) lucide.createIcons();
 }
 
+function setLoadStepState(stepEl, state, text) {
+  if (!stepEl) return;
+  if (state === 'pending') {
+    stepEl.className = "flex items-center gap-2 text-white/30";
+    stepEl.innerHTML = `<i data-lucide="circle" class="w-3.5 h-3.5 text-white/30"></i><span>${text}</span>`;
+  } else if (state === 'active') {
+    stepEl.className = "flex items-center gap-2 text-[#7DB6CC] font-semibold";
+    stepEl.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin text-[#7DB6CC]"></i><span>${text}</span>`;
+  } else if (state === 'done') {
+    stepEl.className = "flex items-center gap-2 text-[#62CA77]";
+    stepEl.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-[#62CA77]"></i><span>${text}</span>`;
+  }
+}
+
 function startPlanLoadingAnimation() {
   planTimerSec = 0;
   const timerEl = document.getElementById('planTimerSeconds');
@@ -470,31 +484,47 @@ function startPlanLoadingAnimation() {
   const s3 = document.getElementById('loadStep3');
   const s4 = document.getElementById('loadStep4');
 
-  if (s1) s1.className = "flex items-center gap-2 text-sky-400 font-semibold";
-  if (s2) s2.className = "flex items-center gap-2 text-slate-500";
-  if (s3) s3.className = "flex items-center gap-2 text-slate-500";
-  if (s4) s4.className = "flex items-center gap-2 text-slate-500";
+  setLoadStepState(s1, 'active', '1. Evaluating ride history & fatigue');
+  setLoadStepState(s2, 'pending', '2. Checking race calendar & tapers');
+  setLoadStepState(s3, 'pending', '3. Matching MyWhoosh catalog');
+  setLoadStepState(s4, 'pending', '4. Assembling personalized schedule');
+  if (window.lucide) lucide.createIcons();
 
   clearInterval(planTimerInterval);
   planTimerInterval = setInterval(() => {
     planTimerSec++;
     if (timerEl) timerEl.innerText = `${planTimerSec}s`;
 
-    if (planTimerSec === 4 && s2) {
-      s1.className = "flex items-center gap-2 text-emerald-400";
-      s2.className = "flex items-center gap-2 text-sky-400 font-semibold";
-    } else if (planTimerSec === 8 && s3) {
-      s2.className = "flex items-center gap-2 text-emerald-400";
-      s3.className = "flex items-center gap-2 text-sky-400 font-semibold";
-    } else if (planTimerSec === 14 && s4) {
-      s3.className = "flex items-center gap-2 text-emerald-400";
-      s4.className = "flex items-center gap-2 text-sky-400 font-semibold";
+    if (planTimerSec === 4) {
+      setLoadStepState(s1, 'done', '1. Evaluating ride history & fatigue');
+      setLoadStepState(s2, 'active', '2. Checking race calendar & tapers');
+      if (window.lucide) lucide.createIcons();
+    } else if (planTimerSec === 9) {
+      setLoadStepState(s1, 'done', '1. Evaluating ride history & fatigue');
+      setLoadStepState(s2, 'done', '2. Checking race calendar & tapers');
+      setLoadStepState(s3, 'active', '3. Matching MyWhoosh catalog');
+      if (window.lucide) lucide.createIcons();
+    } else if (planTimerSec === 15) {
+      setLoadStepState(s1, 'done', '1. Evaluating ride history & fatigue');
+      setLoadStepState(s2, 'done', '2. Checking race calendar & tapers');
+      setLoadStepState(s3, 'done', '3. Matching MyWhoosh catalog');
+      setLoadStepState(s4, 'active', '4. Assembling personalized schedule');
+      if (window.lucide) lucide.createIcons();
     }
   }, 1000);
 }
 
 function stopPlanLoadingAnimation() {
   clearInterval(planTimerInterval);
+  const s1 = document.getElementById('loadStep1');
+  const s2 = document.getElementById('loadStep2');
+  const s3 = document.getElementById('loadStep3');
+  const s4 = document.getElementById('loadStep4');
+  setLoadStepState(s1, 'done', '1. Evaluating ride history & fatigue');
+  setLoadStepState(s2, 'done', '2. Checking race calendar & tapers');
+  setLoadStepState(s3, 'done', '3. Matching MyWhoosh catalog');
+  setLoadStepState(s4, 'done', '4. Assembling personalized schedule');
+  if (window.lucide) lucide.createIcons();
 }
 
 function resetPlanModalToForm() {
@@ -712,10 +742,71 @@ function appendUserMessage(text) {
 function appendCoachMessage(text) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
-  div.className = "bg-[#1A1E24] border border-white/[0.08] rounded-2xl rounded-tl-sm p-3.5 text-white/90 mr-6 shadow-sm leading-relaxed";
-  div.innerText = text;
+  div.className = "bg-[#1A1E24] border border-white/[0.08] rounded-2xl rounded-tl-sm p-3.5 text-white/90 mr-6 shadow-sm leading-relaxed coach-markdown text-sm";
+  
+  if (window.marked && typeof marked.parse === 'function') {
+    try {
+      marked.setOptions({ breaks: true, gfm: true });
+      div.innerHTML = marked.parse(text);
+    } catch (e) {
+      div.innerText = text;
+    }
+  } else {
+    div.innerText = text;
+  }
   container.appendChild(div);
+
+  // Auto-detect recommended workout in quotes e.g. **"Sub Threshold #1"** or "Tempo Surge"
+  const workoutMatch = text.match(/["“]([^"”]+)["”]/);
+  if (workoutMatch) {
+    const candidate = workoutMatch[1].trim();
+    const lower = candidate.toLowerCase();
+    if (candidate.length >= 3 && candidate.length <= 45 && 
+        !['go', 'modify', 'skip', 'green', 'yellow', 'red', 'today', 'tomorrow'].includes(lower) &&
+        !lower.startsWith('ctl') && !lower.startsWith('tsb') && !lower.startsWith('atl')) {
+      const btnDiv = document.createElement('div');
+      btnDiv.className = "mr-6 mt-1 flex justify-start";
+      btnDiv.innerHTML = `
+        <button onclick="quickScheduleToday('${candidate.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-[#7DB6CC]/15 hover:bg-[#7DB6CC]/25 text-[#7DB6CC] border border-[#7DB6CC]/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-sm">
+          <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+          Schedule "${candidate}" for Today
+        </button>
+      `;
+      container.appendChild(btnDiv);
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
   scrollToChatBottom();
+}
+
+async function quickScheduleToday(workoutTitle) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  try {
+    const res = await fetch('/api/calendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        athlete_id: currentAthleteId,
+        date: todayStr,
+        title: workoutTitle,
+        event_type: 'workout',
+        planned_duration_minutes: 45,
+        planned_tss: 45,
+        coach_notes: `Scheduled directly via AI Coach recommendation on ${todayStr}`
+      })
+    });
+    if (res.ok) {
+      if (calendar) calendar.refetchEvents();
+      await loadStats();
+      showToast(`Scheduled "${workoutTitle}" for today!`, 'success');
+      appendCoachMessage(`Locked in **${workoutTitle}** for today (${todayStr})! Check the calendar or today's session card above.`);
+    } else {
+      showToast('Could not schedule session on calendar', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to schedule session: ' + err.message, 'error');
+  }
 }
 
 function scrollToChatBottom() {
