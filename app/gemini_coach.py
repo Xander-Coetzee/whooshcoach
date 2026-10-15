@@ -156,13 +156,21 @@ def test_gemini_connection(api_key: Optional[str] = None, model: Optional[str] =
         }
 
 
-def get_workout_catalog_sample(db: Session, max_per_zone: int = 35) -> str:
-    """Generates catalog of available MyWhoosh workouts grouped by zone with duration variety."""
+def get_workout_catalog_sample(db: Session, max_per_zone: int = 30) -> str:
+    """Generates catalog of available MyWhoosh workouts grouped by zone with balanced duration variety (30m, 45-60m, 75-90m)."""
     zones = ["Z1 - Recovery", "Z2 - Endurance", "Z3 - Tempo", "Z4 - Threshold", "Z5 - VO2Max", "Z6 - Anaerobic"]
     catalog_lines = []
     
     for z in zones:
-        workouts = db.query(Workout).filter(Workout.primary_zone == z).order_by(Workout.duration_minutes.asc()).limit(max_per_zone).all()
+        # Sample across short (20-44m), standard (45-65m), and long (66m+)
+        short_w = db.query(Workout).filter(Workout.primary_zone == z, Workout.duration_minutes < 45).order_by(Workout.duration_minutes.asc()).limit(6).all()
+        med_w = db.query(Workout).filter(Workout.primary_zone == z, Workout.duration_minutes >= 45, Workout.duration_minutes <= 65).order_by(Workout.tss.asc()).limit(14).all()
+        long_w = db.query(Workout).filter(Workout.primary_zone == z, Workout.duration_minutes > 65).order_by(Workout.duration_minutes.asc()).limit(6).all()
+        
+        workouts = short_w + med_w + long_w
+        if not workouts:
+            workouts = db.query(Workout).filter(Workout.primary_zone == z).limit(max_per_zone).all()
+            
         catalog_lines.append(f"### ZONE: {z}")
         for w in workouts:
             catalog_lines.append(
@@ -184,7 +192,7 @@ def resolve_best_mywhoosh_workout(
 ) -> Optional[Workout]:
     """
     Deterministically resolves and validates the optimal real MyWhoosh workout from the 847-workout library.
-    1. Direct ID match if valid in database.
+    1. Direct ID match if valid in database and duration aligns with target.
     2. Exact or case-insensitive title match.
     3. Multi-factor candidate scoring across all 847 workouts (Zone match + Duration proximity + TSS proximity + Preference keywords).
     """
@@ -194,7 +202,12 @@ def resolve_best_mywhoosh_workout(
             wid_int = int(raw_wid)
             w = db.query(Workout).filter(Workout.id == wid_int).first()
             if w:
-                return w
+                # If target_duration was explicitly requested and differs by >20 mins from this ID,
+                # fall through to multi-factor candidate search to find the correct duration match
+                if target_duration and abs((w.duration_minutes or 0) - target_duration) > 20.0:
+                    pass
+                else:
+                    return w
         except (ValueError, TypeError):
             pass
 
