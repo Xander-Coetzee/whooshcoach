@@ -233,6 +233,18 @@ def build_latest_state(db: Session, athlete_id: int = 1, as_of_date: Optional[st
                 target_ftp=ftp
             )
             
+        raw = json.loads(a.raw_json) if a.raw_json else {}
+        weather = raw.get("weather_info")
+        device_name = raw.get("device_name")
+        max_hr_val = a.max_heartrate or raw.get("maxHR")
+        calories = raw.get("calories")
+        peak_powers = {
+            "5s": raw.get("maxAvgPower_5"),
+            "1m": raw.get("maxAvgPower_60"),
+            "5m": raw.get("maxAvgPower_300"),
+            "20m": raw.get("maxAvgPower_1200")
+        }
+
         recent_activities_data.append({
             "id": a.id,
             "date": act_date,
@@ -245,6 +257,11 @@ def build_latest_state(db: Session, athlete_id: int = 1, as_of_date: Optional[st
             "avg_watts": round(a.average_watts, 1) if a.average_watts else None,
             "weighted_watts": round(a.weighted_average_watts, 1) if a.weighted_average_watts else None,
             "avg_hr": round(a.average_heartrate, 1) if a.average_heartrate else None,
+            "max_hr": round(max_hr_val, 1) if max_hr_val else None,
+            "calories": round(calories) if calories else None,
+            "weather": weather,
+            "device": device_name,
+            "peak_powers": {k: v for k, v in peak_powers.items() if v is not None},
             "execution_score": exec_score.get("score") if exec_score else None,
             "execution_summary": exec_score.get("summary") if exec_score else None,
             "notes": wrap_untrusted_data(matched_ev.athlete_notes if matched_ev else None)
@@ -303,6 +320,8 @@ def build_latest_state(db: Session, athlete_id: int = 1, as_of_date: Optional[st
             "name": profile.name,
             "platform": profile.platform,
             "ftp": ftp,
+            "garmin_ftp": getattr(profile, "garmin_ftp", None),
+            "garmin_ftp_date": getattr(profile, "garmin_ftp_date", None),
             "max_hr": max_hr,
             "weight_kg": profile.weight_kg,
             "coaching_mode": getattr(profile, "coaching_mode", "autonomous") or "autonomous",
@@ -361,15 +380,26 @@ def format_latest_state_for_prompt(state: Dict[str, Any]) -> str:
     if rd.get("recommendations"):
         readiness_block += "- Prescribed Action: " + " ".join(rd["recommendations"]) + "\n"
 
-    # Recent activities lines
+    # Recent activities lines with weather and detailed biometrics
     act_lines = []
     for a in state["recent_activities"][:8]:
         pwr_str = f", Avg: {a['avg_watts']}W" if a.get("avg_watts") else ""
-        hr_str = f", HR: {a['avg_hr']}bpm" if a.get("avg_hr") else ""
+        hr_parts = []
+        if a.get("avg_hr"): hr_parts.append(f"{a['avg_hr']} bpm avg")
+        if a.get("max_hr"): hr_parts.append(f"max {a['max_hr']} bpm")
+        hr_str = f", HR: {', '.join(hr_parts)}" if hr_parts else ""
+
+        w_str = ""
+        if a.get("weather") and a["weather"].get("temp_c") is not None:
+            w = a["weather"]
+            w_str = f", {w['temp_c']}°C"
+            if w.get("condition"): w_str += f" {w['condition']}"
+            if w.get("station"): w_str += f" @ {w['station']}"
+
         score_str = f", Score: {a['execution_score']}/10" if a.get("execution_score") else ""
-        notes_str = f" {a['notes']}" if a.get("notes") else ""
+        notes_str = f" [{a['notes']}]" if a.get("notes") else ""
         act_lines.append(
-            f"- {a['date']} {a['environment']}: \"{a['name']}\" ({a['duration_minutes']} min, {a['tss']} TSS{pwr_str}{hr_str}{score_str}){notes_str}"
+            f"- {a['date']} {a['environment']}: \"{a['name']}\" ({a['duration_minutes']} min, {a['tss']} TSS, {a['distance_km']}km{pwr_str}{hr_str}{w_str}{score_str}){notes_str}"
         )
     recent_acts_text = "\n".join(act_lines) if act_lines else "No recent completed rides logged."
 
@@ -389,10 +419,15 @@ def format_latest_state_for_prompt(state: Dict[str, Any]) -> str:
         )
     races_text = "\n".join(race_lines) if race_lines else "No priority target races scheduled."
 
+    # Athlete FTP status (indoor vs Garmin auto-detected)
+    ftp_line = f"- Profile FTP: {ath['ftp']} W | Max HR: {ath['max_hr']} bpm | Weight: {ath['weight_kg']} kg | Platform: {ath['platform'].title()}"
+    if ath.get("garmin_ftp"):
+        ftp_line += f"\n- Garmin Auto-Detected FTP: {ath['garmin_ftp']} W (detected on {ath.get('garmin_ftp_date') or 'recent ride'})"
+
     return f"""
 [TIER 2: OPERATIONAL STATE - DETERMINISTIC PHYSIOLOGY & LIVE CALENDAR]
 ATHLETE METRICS:
-- FTP: {ath['ftp']} W | Max HR: {ath['max_hr']} bpm | Weight: {ath['weight_kg']} kg | Platform: {ath['platform'].title()}
+{ftp_line}
 - Z2 Endurance: {ath['power_zones']['Z2 - Endurance']['min_watts']}-{ath['power_zones']['Z2 - Endurance']['max_watts']} W
 - Z4 Threshold: {ath['power_zones']['Z4 - Threshold']['min_watts']}-{ath['power_zones']['Z4 - Threshold']['max_watts']} W
 - Z5 VO2Max: {ath['power_zones']['Z5 - VO2Max']['min_watts']}-{ath['power_zones']['Z5 - VO2Max']['max_watts']} W
@@ -435,7 +470,8 @@ def build_history_state(db: Session, athlete_id: int = 1, days: int = 90) -> Dic
     weeks: Dict[str, Dict[str, Any]] = {}
     peak_watts = 0.0
     peak_weighted = 0.0
-    
+    peak_bests: Dict[str, float] = {}
+
     for a in activities:
         d_str = a.start_date_local[:10] if a.start_date_local else (a.start_date[:10] if a.start_date else None)
         if not d_str:
@@ -456,7 +492,7 @@ def build_history_state(db: Session, athlete_id: int = 1, days: int = 90) -> Dic
         weeks[week_start]["total_minutes"] += (round(a.moving_time / 60, 1) if a.moving_time else 0.0)
         weeks[week_start]["ride_count"] += 1
         
-        is_outdoor = (a.type == "Ride" or (a.id and "strava" in a.id))
+        is_outdoor = (a.type == "Ride" or (a.id and any(k in a.id for k in ["garmin", "strava"])))
         if is_outdoor:
             weeks[week_start]["outdoor_count"] += 1
         else:
@@ -466,6 +502,13 @@ def build_history_state(db: Session, athlete_id: int = 1, days: int = 90) -> Dic
             peak_watts = a.max_watts
         if a.weighted_average_watts and a.weighted_average_watts > peak_weighted:
             peak_weighted = a.weighted_average_watts
+
+        # Extract peak average power milestones (5s, 1m, 5m, 20m)
+        raw = json.loads(a.raw_json) if a.raw_json else {}
+        for p_key, label in [("maxAvgPower_5", "5s"), ("maxAvgPower_60", "1m"), ("maxAvgPower_300", "5m"), ("maxAvgPower_1200", "20m")]:
+            val = raw.get(p_key)
+            if val and val > peak_bests.get(label, 0):
+                peak_bests[label] = round(float(val), 1)
 
     weekly_summary = list(weeks.values())
     for w in weekly_summary:
@@ -478,5 +521,6 @@ def build_history_state(db: Session, athlete_id: int = 1, days: int = 90) -> Dic
         "total_activities_count": len(activities),
         "peak_max_watts": peak_watts or None,
         "peak_normalized_watts": peak_weighted or None,
+        "peak_power_bests": peak_bests,
         "weekly_progression": weekly_summary
     }

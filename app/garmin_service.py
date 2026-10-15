@@ -59,6 +59,63 @@ class GarminService:
             logger.error(f"[Garmin] Unexpected login error for '{email}': {e}")
             return None, None, f"Garmin login error: {e}"
 
+    def _format_weather(self, weather_data: Optional[Dict[str, Any]], ambient_temp_c: Optional[float] = None) -> Optional[Dict[str, Any]]:
+        """Extracts and normalizes weather parameters (temperature, station, conditions, humidity, wind)."""
+        if not weather_data or not isinstance(weather_data, dict):
+            if ambient_temp_c is not None:
+                return {"temp_c": ambient_temp_c, "condition": None, "station": None}
+            return None
+        station = (weather_data.get("weatherStationDTO") or {}).get("name")
+        temp = weather_data.get("temp")
+        temp_c = None
+        if temp is not None:
+            # Garmin weather temperature is in Fahrenheit if > 40 in normal daytime range
+            temp_c = round((temp - 32) * 5 / 9, 1) if temp > 40 else round(temp, 1)
+        elif ambient_temp_c is not None:
+            temp_c = ambient_temp_c
+        desc = (weather_data.get("weatherTypeDTO") or {}).get("desc")
+        humidity = weather_data.get("relativeHumidity")
+        wind_mph = weather_data.get("windSpeed")
+        wind_kmh = round(wind_mph * 1.60934, 1) if wind_mph is not None else None
+        return {
+            "temp_c": temp_c,
+            "condition": desc,
+            "station": station,
+            "humidity": humidity,
+            "wind_kmh": wind_kmh
+        }
+
+    def _build_notes(self, act: Dict[str, Any], weather_info: Optional[Dict[str, Any]] = None, device_name: Optional[str] = None) -> str:
+        """Constructs a high-signal, information-dense note string for coaching context."""
+        dist_km = (act.get("distance") or 0.0) / 1000.0
+        elev_m = act.get("elevationGain") or 0.0
+        avg_w = act.get("averageWatts")
+        norm_w = act.get("normPower") or act.get("weightedAveragePower")
+        avg_hr = act.get("averageHR")
+        max_hr = act.get("maxHR")
+        calories = act.get("calories")
+
+        parts = [f"Outdoor ride from Garmin: {dist_km:.1f} km, {elev_m:.0f}m elev"]
+        if avg_w:
+            w_str = f"{avg_w:.0f}W avg"
+            if norm_w: w_str += f" (NP: {norm_w:.0f}W)"
+            parts.append(w_str)
+        if avg_hr:
+            hr_str = f"{avg_hr:.0f} bpm avg"
+            if max_hr: hr_str += f" (max {max_hr:.0f} bpm)"
+            parts.append(hr_str)
+        if weather_info and weather_info.get("temp_c") is not None:
+            w_str = f"{weather_info['temp_c']}°C"
+            if weather_info.get("condition"): w_str += f" {weather_info['condition']}"
+            if weather_info.get("station"): w_str += f" @ {weather_info['station']}"
+            parts.append(w_str)
+        if calories:
+            parts.append(f"{calories:.0f} kcal")
+        if device_name:
+            parts.append(f"Recorded on {device_name}")
+
+        return ", ".join(parts) + "."
+
     def test_connection(self, email: str, password: str) -> Dict[str, Any]:
         """Validates Garmin Connect login and returns account display name."""
         try:
@@ -99,6 +156,32 @@ class GarminService:
             profile.garmin_tokens = new_tokens
             db.commit()
 
+        # Build device ID map (e.g. Edge 820, Edge 840 Solar)
+        device_map = {}
+        try:
+            devices = client.get_devices() or []
+            for d in devices:
+                dev_id = d.get("deviceId")
+                name = d.get("productDisplayName") or d.get("deviceTypeName")
+                if dev_id and name:
+                    device_map[dev_id] = name
+        except Exception as e:
+            logger.debug(f"[Garmin] Device fetch skipped: {e}")
+
+        # Check for auto-detected Cycling FTP on Garmin device
+        try:
+            ftp_res = client.get_cycling_ftp()
+            if ftp_res and isinstance(ftp_res, dict):
+                detected_ftp = ftp_res.get("functionalThresholdPower")
+                cal_date = ftp_res.get("calendarDate")
+                if detected_ftp:
+                    profile.garmin_ftp = int(detected_ftp)
+                    profile.garmin_ftp_date = str(cal_date)[:10] if cal_date else None
+                    db.commit()
+                    logger.info(f"[Garmin] Detected Cycling FTP: {detected_ftp} W ({profile.garmin_ftp_date})")
+        except Exception as e:
+            logger.debug(f"[Garmin] Cycling FTP fetch skipped: {e}")
+
         # -------------------------------------------------------------
         # 1. SYNC ACTIVITIES (CYCLING RIDES)
         # -------------------------------------------------------------
@@ -112,7 +195,7 @@ class GarminService:
             logger.error(f"[Garmin] Failed to fetch activities: {e}")
             return {"status": "error", "message": f"Failed to fetch activities from Garmin: {e}"}
 
-        # Pre-load existing activities to perform deduplication
+        # Pre-load existing activities to perform deduplication & backfill
         existing_rides = db.query(RideActivity).filter(RideActivity.athlete_id == profile.id).all()
         existing_ids = {r.id for r in existing_rides}
         existing_start_epochs = []
@@ -138,6 +221,30 @@ class GarminService:
 
             act_db_id = f"garmin_{act_id}"
             if act_db_id in existing_ids:
+                # Backfill weather, device name, and rich notes on existing records if missing
+                existing_act = db.query(RideActivity).filter(RideActivity.id == act_db_id).first()
+                if existing_act and existing_act.raw_json:
+                    try:
+                        act_data = json.loads(existing_act.raw_json)
+                        if "weather_info" not in act_data:
+                            weather_data = None
+                            try:
+                                weather_data = client.get_activity_weather(act_id)
+                            except Exception:
+                                pass
+                            ambient_t = act_data.get("minTemperature") or act_data.get("maxTemperature")
+                            w_info = self._format_weather(weather_data, ambient_t)
+                            act_data["weather_info"] = w_info
+                            dev_name = device_map.get(act_data.get("deviceId"))
+                            if dev_name:
+                                act_data["device_name"] = dev_name
+                            existing_act.raw_json = json.dumps(act_data)
+                            cal_ev = db.query(CalendarEvent).filter(CalendarEvent.activity_id == act_db_id).first()
+                            if cal_ev and (not cal_ev.athlete_notes or "Outdoor ride from Garmin" in cal_ev.athlete_notes):
+                                cal_ev.athlete_notes = self._build_notes(act_data, w_info, dev_name)
+                            db.commit()
+                    except Exception as e:
+                        logger.debug(f"[Garmin] Backfill error for {act_db_id}: {e}")
                 continue
 
             # Filter for cycling / bike activities
@@ -200,6 +307,21 @@ class GarminService:
 
             calc_tss = max(5, calc_tss)
 
+            # Fetch weather and device context
+            weather_data = None
+            try:
+                weather_data = client.get_activity_weather(act_id)
+            except Exception:
+                pass
+            ambient_t = act.get("minTemperature") or act.get("maxTemperature")
+            weather_info = self._format_weather(weather_data, ambient_t)
+            act["weather_info"] = weather_info
+            dev_name = device_map.get(act.get("deviceId"))
+            if dev_name:
+                act["device_name"] = dev_name
+
+            athlete_notes_text = self._build_notes(act, weather_info, dev_name)
+
             # Match or create calendar event for this athlete
             matched_event = db.query(CalendarEvent).filter(
                 CalendarEvent.athlete_id == profile.id,
@@ -215,6 +337,7 @@ class GarminService:
                 matched_event.actual_avg_watts = avg_watts
                 matched_event.actual_avg_hr = avg_hr
                 matched_event.activity_id = act_db_id
+                matched_event.athlete_notes = athlete_notes_text
                 matched_id = matched_event.id
                 logger.info(f"[Garmin] Matched outdoor ride '{title}' to planned event on {date_str} (TSS: {calc_tss})")
             else:
@@ -230,7 +353,7 @@ class GarminService:
                     actual_avg_hr=avg_hr,
                     status="completed",
                     activity_id=act_db_id,
-                    athlete_notes=f"Outdoor ride from Garmin: {distance_m/1000.0:.1f} km, {elevation_m:.0f}m elev, {avg_watts or 0:.0f}W avg."
+                    athlete_notes=athlete_notes_text
                 )
                 db.add(new_cal_event)
                 db.flush()

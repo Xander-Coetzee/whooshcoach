@@ -780,8 +780,15 @@ async def adapt_calendar_after_activity(
         target_ftp=profile.ftp
     )
 
-    is_outdoor_act = (activity.type == "Ride" or (activity.id and "strava" in activity.id) or completed_event.event_type == "outdoor_ride")
-    ride_env_desc = "Outdoor Road/Gravel Ride (via Strava)" if is_outdoor_act else "Indoor Virtual Trainer Ride (via MyWhoosh)"
+    is_outdoor_act = (activity.type == "Ride" or (activity.id and any(k in activity.id for k in ["garmin", "strava"])) or completed_event.event_type == "outdoor_ride")
+    if activity.id and "garmin" in activity.id:
+        ride_env_desc = "Outdoor Road/Gravel Ride (via Garmin Connect)"
+    elif is_outdoor_act:
+        ride_env_desc = "Outdoor Road/Gravel Ride (via Strava)"
+    else:
+        ride_env_desc = "Indoor Virtual Trainer Ride (via MyWhoosh)"
+
+    garmin_ftp_info = f" (Garmin Auto-Detected FTP: {profile.garmin_ftp} W)" if getattr(profile, "garmin_ftp", None) else ""
 
     prompt = f"""
 You are an elite AI cycling coach evaluating completed workout execution.
@@ -795,9 +802,11 @@ EXECUTION FIDELITY SCORE: {exec_score['score']}/10 ({exec_score['rating']})
 COMPLETED SESSION DETAILS:
 - Workout Planned: "{completed_event.title}" ({completed_event.primary_zone}, Planned TSS: {planned_tss})
 - Completed Ride: "{activity.name}" ({ride_env_desc})
+- Distance: {round((activity.distance or 0)/1000.0, 1)} km, Elevation Gain: {round(activity.total_elevation_gain or 0)} m
 - Avg Power: {activity.average_watts or 'N/A'} W, Normalized: {activity.weighted_average_watts or 'N/A'} W
 - Avg HR: {activity.average_heartrate or 'N/A'} bpm, Max HR: {activity.max_heartrate or 'N/A'} bpm
-- Athlete FTP: {profile.ftp} W
+- Athlete Profile FTP: {profile.ftp} W{garmin_ftp_info}
+- Environmental & Rider Telemetry: {completed_event.athlete_notes or 'None'}
 
 UPCOMING SCHEDULED SESSIONS (NEXT 7 DAYS):
 {json.dumps(upcoming_summary, indent=2)}

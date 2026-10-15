@@ -139,6 +139,8 @@ class AthleteProfile(Base):
     garmin_password = Column(String(255), nullable=True)
     garmin_tokens = Column(Text, nullable=True)
     last_garmin_sync = Column(String(50), nullable=True)
+    garmin_ftp = Column(Integer, nullable=True)
+    garmin_ftp_date = Column(String(50), nullable=True)
 
 class DailyWellness(Base):
     """
@@ -220,7 +222,9 @@ def init_db():
             ("garmin_email", "VARCHAR(255)"),
             ("garmin_password", "VARCHAR(255)"),
             ("garmin_tokens", "TEXT"),
-            ("last_garmin_sync", "VARCHAR(50)")
+            ("last_garmin_sync", "VARCHAR(50)"),
+            ("garmin_ftp", "INTEGER"),
+            ("garmin_ftp_date", "VARCHAR(50)")
         ]:
             try:
                 conn.execute(text(f"ALTER TABLE athlete_profile ADD COLUMN {col} {col_type}"))

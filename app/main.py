@@ -203,8 +203,12 @@ def list_athletes(db: Session = Depends(get_db)):
             "gemini_model": a.gemini_model or "gemini-3.6-flash",
             "is_mywhoosh_connected": bool(a.mywhoosh_token or (a.mywhoosh_email and a.mywhoosh_password)),
             "is_zwift_connected": bool(a.zwift_token or (a.zwift_username and a.zwift_password)),
+            "is_garmin_connected": bool(a.garmin_tokens or (a.garmin_email and a.garmin_password)),
             "last_mywhoosh_sync": a.last_mywhoosh_sync,
-            "last_zwift_sync": a.last_zwift_sync
+            "last_zwift_sync": a.last_zwift_sync,
+            "last_garmin_sync": a.last_garmin_sync,
+            "garmin_ftp": getattr(a, "garmin_ftp", None),
+            "garmin_ftp_date": getattr(a, "garmin_ftp_date", None)
         }
         for a in athletes
     ]
@@ -259,7 +263,13 @@ def get_athlete(athlete_id: int, db: Session = Depends(get_db)):
         "zwift_username": a.zwift_username or "",
         "has_zwift_password": bool(a.zwift_password),
         "is_zwift_connected": bool(a.zwift_token or (a.zwift_username and a.zwift_password)),
-        "last_zwift_sync": a.last_zwift_sync
+        "last_zwift_sync": a.last_zwift_sync,
+        "garmin_email": a.garmin_email or "",
+        "has_garmin_password": bool(a.garmin_password),
+        "is_garmin_connected": bool(a.garmin_tokens or (a.garmin_email and a.garmin_password)),
+        "last_garmin_sync": a.last_garmin_sync,
+        "garmin_ftp": getattr(a, "garmin_ftp", None),
+        "garmin_ftp_date": getattr(a, "garmin_ftp_date", None)
     }
 
 # ----------------- SECTION 11 DOSSIER & PHYSIOLOGY API -----------------
